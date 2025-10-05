@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aitown"
+version = "0.0.0"
+description = "AI Town example project"
+authors = [ { name = "AI", email = "dev@example.com" } ]
+dependencies = ["loguru"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["server", "aitown"]

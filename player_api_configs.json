@@ -1,0 +1,10 @@
+{
+  "player42": {
+    "api_name": "mockplayer",
+    "token": "sekret"
+  },
+  "player9": {
+    "api_name": "playerapi",
+    "token": "t"
+  }
+}
