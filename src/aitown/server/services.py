@@ -10,6 +10,7 @@ from loguru import logger
 from aitown.server.models import NPCCreate, NPCBuy, PlayerAPIConfig, PlaceIn, PLACES
 from aitown.server import storage
 import logging
+from aitown.server import llm_adapter
 
 logger = logging.getLogger(__name__)
 _RAISE_ON_ERROR = os.environ.get('RAISE_ON_PERSISTENCE_ERROR') == '1'
@@ -44,6 +45,9 @@ manager = ConnectionManager()
 NPCS: Dict[str, Dict[str, Any]] = {}
 PLAYER_API_CONFIGS: Dict[str, Dict[str, Any]] = storage.load_all_configs()
 
+# Initialize a global adapter instance for use by services
+_ADAPTER = llm_adapter.get_adapter()
+
 # Attempt to load persisted NPCs from sqlite if configured
 try:
     loaded = storage.load_all_npcs()
@@ -52,8 +56,16 @@ try:
 except Exception:
     pass
 
-SIMULATION_INTERVAL = 2.0
+# Simulation interval in seconds. Can be tuned via env var for production/testing.
+# Recommended production value: 90.0 (set AITOWN_SIMULATION_INTERVAL=90)
+SIMULATION_INTERVAL = float(os.environ.get('AITOWN_SIMULATION_INTERVAL', '2.0'))
 simulation_running = True
+
+# Number of simulation ticks that constitute one in-game day. Make configurable
+# so tests and production can map wall-clock time to in-game days. Default=24
+# For example, with AITOWN_SIMULATION_INTERVAL=90 and TICKS_PER_DAY=24 you get
+# 24 * 90s = 2160s = 36 minutes per in-game day.
+TICKS_PER_DAY = int(os.environ.get('AITOWN_TICKS_PER_DAY', '24'))
 
 
 async def mock_generate_action(npc: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -66,14 +78,31 @@ async def mock_generate_action(npc: Dict[str, Any], context: Dict[str, Any]) -> 
     if player_id and PLAYER_API_CONFIGS.get(player_id):
         cfg = PLAYER_API_CONFIGS[player_id]
         return {'action': 'api_preference', 'text': f"{npc['name']} used player API ({cfg.get('api_name','custom')})", 'used_player_api': True}
-    if 'work' in prompt:
-        return {'action': 'work', 'text': f"{npc['name']} is working."}
-    if 'talk' in prompt or 'social' in prompt:
-        return {'action': 'talk', 'text': f"{npc['name']} says hello to nearby townsfolk."}
-    npc['x'] += 0.5
-    npc['y'] += 0.2
-    # simple movement
-    return {'action': 'move', 'dx': 0.5, 'dy': 0.2, 'text': f"{npc['name']} wanders."}
+    # Try to use the configured adapter for more realistic responses. If adapter fails,
+    # call_with_fallback will return a local rule response.
+    try:
+        # prefer async path if adapter provides it
+        if hasattr(_ADAPTER, "agenerate"):
+            # use async helper
+            res = await llm_adapter.async_call_with_fallback(_ADAPTER, prompt)
+        else:
+            res = llm_adapter.call_with_fallback(_ADAPTER, prompt)
+        text = res.get('text', '')
+        # heuristics: map LLM text to simple actions
+        lower = (text or '').lower()
+        if 'work' in lower:
+            return {'action': 'work', 'text': f"{npc['name']} is working."}
+        if 'talk' in lower or 'hello' in lower or 'hi' in lower:
+            return {'action': 'talk', 'text': f"{npc['name']} says: {text}"}
+        # fallback to movement
+        npc['x'] += 0.5
+        npc['y'] += 0.2
+        return {'action': 'move', 'dx': 0.5, 'dy': 0.2, 'text': f"{npc['name']} wanders."}
+    except Exception:
+        # if something unexpected happens, fall back to simple deterministic behavior
+        npc['x'] += 0.5
+        npc['y'] += 0.2
+        return {'action': 'move', 'dx': 0.5, 'dy': 0.2, 'text': f"{npc['name']} wanders."}
 
 
 async def simulation_loop():
@@ -170,7 +199,19 @@ async def simulate_step():
                 npc['state'] = {'action': 'move', 'text': action.get('text')}
             else:
                 npc['state'] = {'action': action.get('action'), 'text': action.get('text')}
-            updates.append({'id': npc_id, 'x': npc['x'], 'y': npc['y'], 'state': npc['state'], 'used_player_api': action.get('used_player_api', False)})
+            # time & rhythm: increment tick counter and handle daily events every TICKS_PER_DAY ticks
+            tick = npc.get('tick', 0) + 1
+            npc['tick'] = tick
+            if 'day' not in npc:
+                npc['day'] = 0
+            if tick % TICKS_PER_DAY == 0:
+                npc['day'] = npc.get('day', 0) + 1
+                # simple daily pay: +1 money per day as placeholder
+                npc['money'] = npc.get('money', 0) + 1
+                # annotate state with day rollover
+                npc['state']['day_rollover'] = True
+
+            updates.append({'id': npc_id, 'x': npc['x'], 'y': npc['y'], 'state': npc['state'], 'used_player_api': action.get('used_player_api', False), 'tick': npc['tick'], 'day': npc.get('day')})
         except Exception as e:
             print('Error in simulate_step:', e)
     if updates:

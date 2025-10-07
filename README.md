@@ -37,3 +37,20 @@ uvicorn server.main:app --host 0.0.0.0 --port 8000 --reload
 - 现在帮你把后端启动并验通？（我无法直接在你的机器运行进程，但我可以给出启动命令和检查方法）
 - 我继续完善前端交互（例如可拖放 NPC，显示对话气泡）
 - 将 LLM 适配器改成 OpenAI 示例实现（你需要提供 API key）
+
+Configuration
+-------------
+
+You can tune the simulation timing with two environment variables:
+
+- `AITOWN_SIMULATION_INTERVAL` — seconds between automatic simulation steps (default: `2.0` for dev; recommended `90` for production).
+- `AITOWN_TICKS_PER_DAY` — how many simulation ticks make up one in-game day (default: `24`).
+
+For example, to get a 36-minute in-game day set:
+
+```
+export AITOWN_SIMULATION_INTERVAL=90
+export AITOWN_TICKS_PER_DAY=24
+```
+
+This will result in 24 * 90s = 2160s = 36 minutes per in-game day.

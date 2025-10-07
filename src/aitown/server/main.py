@@ -102,6 +102,16 @@ async def list_npcs():
 	return list(NPCS.values())
 
 
+@app.get('/state')
+async def get_full_state():
+	"""Return the full simulation state for clients that need to re-sync after reconnect.
+
+	This complements the websocket initial full_state send and provides a simple
+	HTTP fallback for clients that cannot use websockets or need an explicit resync.
+	"""
+	return {'type': 'full_state', 'payload': list(NPCS.values())}
+
+
 @app.get('/npc/{npc_id}')
 async def get_npc(npc_id: str):
 	npc = NPCS.get(npc_id)
