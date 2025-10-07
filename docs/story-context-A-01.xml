@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<storyContext>
+  <story id="A-01" file="docs/stories/story-1.1.md">
+    <title>创建 NPC</title>
+    <asA>player</asA>
+    <iWant>create an NPC via POST /npc</iWant>
+    <soThat>the system persists the NPC and notifies subscribers that a new NPC exists</soThat>
+    <acceptanceCriteria>
+      <ac id="AC-1">POST /npc returns 201 with a JSON object matching NPC schema (id, player_id, name, prompt, initial_stats)</ac>
+      <ac id="AC-2">Return 409 with explanatory error when player already has an active NPC</ac>
+      <ac id="AC-3">Emit WebSocket event 'npc_created' on successful creation and subscribed clients receive it</ac>
+      <ac id="AC-4">NPC is queryable in in-memory store and GET /npc/{id} returns the same data</ac>
+    </acceptanceCriteria>
+    <references>
+      <doc path="docs/epic-stories.md">Epic Stories</doc>
+      <doc path="docs/prd.md">PRD</doc>
+      <doc path="docs/tech-spec.md">Tech Spec</doc>
+      <doc path="docs/solution-architecture.md">Solution Architecture</doc>
+    </references>
+    <artifacts>
+      <docs>
+        <item path="docs/tech-spec-epic-A.md">Tech spec for Epic A (routes/npc, ws/broadcaster)</item>
+        <item path="docs/tech-spec.md">Project tech-spec with INPC model and source tree suggestions</item>
+        <item path="docs/solution-architecture.md">Solution architecture summary (event-driven state updates, broadcaster)</item>
+      </docs>
+      <tests>
+        <item path="tests/smoke/smoke.test.ts">Smoke test using mock LLM adapter demonstrating deterministic action generation</item>
+        <item path="tests/__mocks__/mockLLMAdapter.ts">Mock LLM adapter used by tests</item>
+      </tests>
+    </artifacts>
+    <code>
+      <item path="src/routes/npc.ts">Express route handlers for NPC endpoints (POST/GET/GET by id)</item>
+      <item path="src/services/npcService.ts">Service: create/get/list NPC operations and business logic</item>
+      <item path="src/repos/memoryRepo.ts">In-memory repository implementation (snapshot placeholder)</item>
+      <item path="src/ws/broadcaster.ts">WebSocket broadcaster utility (emit npc_created/state_update)</item>
+      <item path="src/adapters/mockLLM.ts">Mock LLM adapter used by tests and local simulation</item>
+      <item path="src/types/index.ts">Shared TypeScript interfaces (INPC, IAction)</item>
+      <item path="src/index.ts">Server bootstrap wiring Express + WebSocket</item>
+    </code>
+    <interfaces>
+      <interface name="INPC">
+        <fields>id, playerId, name, prompt, hunger, energy, mood, money, inventory, location, alive</fields>
+        <note>See `docs/tech-spec.md` for suggested TypeScript interface</note>
+      </interface>
+      <interface name="REST Endpoints">
+        <fields>POST /npc, GET /npc, GET /npc/{id}, PATCH /npc/{id}/prompt, DELETE /npc/{id}</fields>
+        <note>Mutations should emit WebSocket events `npc_created`/`npc_deleted` and state changes broadcast as `state_update`</note>
+      </interface>
+      <interface name="WebSocket Events">
+        <fields>npc_created, npc_deleted, state_update { timestamp, npc_id, delta_changes, new_state_snapshot, version }</fields>
+      </interface>
+    </interfaces>
+    <codeHints>
+      <hint>Repo source tree is not present; docs describe `src/routes/npc`, `src/services/npcService`, `src/ws/broadcaster`, `src/repos/memoryRepo` as implementation targets.</hint>
+      <hint>Use `tests/smoke/smoke.test.ts` and `tests/__mocks__/mockLLMAdapter.ts` as starting points for adapter and integration tests.</hint>
+    </codeHints>
+    <generatedBy>BMAD story-context workflow</generatedBy>
+    <generatedAt><!-- date system-generated --></generatedAt>
+  </story>
+</storyContext>
