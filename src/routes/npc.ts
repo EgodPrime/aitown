@@ -92,4 +92,22 @@ router.patch('/:id/prompt', (req, res) => {
   }
 });
 
+router.delete('/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const playerId = (req as any).player_id;
+    if (!playerId) return res.status(401).json({ error: 'unauthorized' });
+  const deleted = npcService.delete(playerId, id);
+  // human-readable announcement
+  const humanMsg = `${deleted.name} 永远离开了小镇`;
+  // broadcast deletion to websocket subscribers with a readable announcement
+  broadcast('npc_deleted', { id: deleted.id, actor: playerId, deleted_at: deleted.deleted_at, message: humanMsg });
+  res.json({ id: deleted.id, deleted_at: deleted.deleted_at, message: humanMsg });
+  } catch (err: any) {
+    if (err.message === 'NOT_FOUND') return res.status(404).json({ error: 'not_found' });
+    if (err.message === 'FORBIDDEN') return res.status(403).json({ error: 'forbidden' });
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 export default router;

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import createApp from '../../src/app';
-import { broadcast } from '../../src/ws/broadcaster';
 import { memoryRepo } from '../../src/repos/memoryRepo';
 import { PROMPT_MAX_LENGTH } from '../../src/config';
+import { broadcast } from '../../src/ws/broadcaster';
 
 vi.mock('../../src/ws/broadcaster', () => ({
   broadcast: vi.fn()
@@ -123,6 +123,45 @@ describe('NPC routes', () => {
   const createRes = await request(app).post('/api/npc').set('x-player-id', 'pp2').send({ name: 'PatchTest2', prompt: 'p' });
   const id = createRes.body.id;
   const res = await request(app).patch(`/api/npc/${id}/prompt`).set('x-player-id', 'other').send({ prompt: 'bad' });
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /api/prompt-templates returns templates array with at least 6 items', async () => {
+    const app = createApp();
+    const res = await request(app).get('/api/prompt-templates');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('templates');
+    expect(Array.isArray(res.body.templates)).toBe(true);
+    expect(res.body.templates.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('DELETE /api/npc/:id allows owner to delete, removes from memory, logs event and broadcasts', async () => {
+    const app = createApp();
+    // create npc as owner pdel
+    const createRes = await request(app).post('/api/npc').set('x-player-id', 'pdel').send({ name: 'ToDelete', prompt: 'p' });
+    const id = createRes.body.id;
+
+    const delRes = await request(app).delete(`/api/npc/${id}`).set('x-player-id', 'pdel');
+    expect(delRes.status).toBe(200);
+    expect(delRes.body).toHaveProperty('id', id);
+    expect(delRes.body).toHaveProperty('deleted_at');
+
+    // ensure memory repo no longer has the npc
+    expect(memoryRepo.get(id)).toBeUndefined();
+
+    // ensure event log contains npc_deleted
+    const events = memoryRepo.getEvents();
+    expect(events.find((e: any) => e.type === 'npc_deleted' && e.npc_id === id)).toBeTruthy();
+
+    // ensure broadcast called
+    expect(broadcast).toHaveBeenCalledWith('npc_deleted', expect.objectContaining({ id }));
+  });
+
+  it('DELETE /api/npc/:id returns 403 for non-owner', async () => {
+    const app = createApp();
+    const createRes = await request(app).post('/api/npc').set('x-player-id', 'owner2').send({ name: 'ToDelete2', prompt: 'p' });
+    const id = createRes.body.id;
+    const res = await request(app).delete(`/api/npc/${id}`).set('x-player-id', 'other');
     expect(res.status).toBe(403);
   });
 });

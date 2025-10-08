@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import npcRouter from './routes/npc';
+import promptTemplates from './routes/promptTemplates';
 
 export default () => {
   const app = express();
@@ -18,6 +19,9 @@ export default () => {
   });
 
   app.use('/api/npc', npcRouter);
+  // Prompt templates read-only endpoint
+  // Note: path is /api/prompt-templates
+  app.use('/api/prompt-templates', promptTemplates);
 
   return app;
 };

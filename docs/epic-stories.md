@@ -42,11 +42,12 @@ Stories:
 	- 更新操作在事件日志中记录一条 `prompt_updated` 记录（包含 actor、timestamp、diff 可选）。
 	Priority: Medium
 	Story Points: 3
-5. A-05: 删除 NPC（DELETE /npc/{id}） — 清理内存状态并广播 `npc_deleted`。
+5. A-05: 删除 NPC（DELETE /npc/{id}） + Prompt 提示库（GET /prompt-templates） — 清理内存状态并提供示例 prompt 静态库。
 	Acceptance Criteria:
-	- 仅资源所有者或管理员可删除；成功返回 200 并广播 `npc_deleted`。
-	- 删除应从活动内存列表移除该 NPC 并释放相关短期缓存；事件日志保留审计记录。
+	- 仅资源所有者或管理员可删除；成功返回 200 并广播 `npc_deleted` 到订阅客户端。
+	- 删除应从活动内存列表移除该 NPC 并释放相关短期缓存；事件日志保留审计记录（包含 actor、timestamp）。
 	- 随后对该 id 的 GET /npc/{id} 返回 404 或已标记为已删除的状态。
+	- 提供只读的 prompt 示例库（`GET /prompt-templates` 或静态文件 `docs/prompt-templates.json`），至少包含 6 条示例 prompt，示例不得包含私有凭证。
 	Priority: Medium
 	Story Points: 2
 
@@ -147,30 +148,16 @@ Stories:
 下面给出针对初始团队（2 dev, 2 周冲刺假设）规划的前三个冲刺候选。每个冲刺包含建议的故事集合与估算点数。请根据团队实际速度调整。
 
 Sprint 1 (目标：交付可演示的最小仿真与 NPC 创建路径) — Capacity target: ~20 points
-- A-01: 创建 NPC — 5 pts
-- B-03: LLM Adapter + mock — 5 pts
-- B-02: 仿真循环（90s） — 5 pts
-- B-05: state_update 广播 — 5 pts
 
 Sprint 1 Total: 20 pts
 
 Sprint 2 (目标：完善展示接口、单体查询与事件写入)
-- A-02: 查看 NPC 列表 — 3 pts
-- A-03: 查看单个 NPC — 3 pts
-- A-04: 更新 NPC prompt — 3 pts
-- B-04: 事件总线与事件日志 — 5 pts
-- C-01: GET /places — 3 pts
 
-Sprint 2 Total: 17 pts
+Sprint 2 Total: 20 pts
 
 Sprint 3 (目标：经济、记忆与清理功能)
-- A-05: 删除 NPC — 2 pts
-- C-02: 购买/消费逻辑 — 5 pts
-- C-03: 工作行为与收益模型 — 5 pts
-- D-01: memory_log — 5 pts
-- D-02: transactions 查询 — 3 pts
 
-Sprint 3 Total: 20 pts
+Sprint 3 Total: 23 pts
 
 Notes:
 - 优先级标注基于 MVP 必需性（High = 必需以进行演示或核心功能；Medium = 支持性功能），请与团队讨论并据此调整排期。

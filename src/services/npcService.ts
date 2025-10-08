@@ -65,4 +65,27 @@ export const npcService = {
     memoryRepo.appendEvent(event);
     return npc;
   }
+  ,
+  delete(player_id: string, id: string) {
+    const npc = memoryRepo.get(id);
+    if (!npc) throw new Error('NOT_FOUND');
+    // simple admin check: allow if player_id matches owner or if player_id === 'admin'
+    if (npc.player_id !== player_id && player_id !== 'admin') throw new Error('FORBIDDEN');
+
+    // record deletion event
+    const timestamp = new Date().toISOString();
+    const event = {
+      type: 'npc_deleted',
+      actor: player_id,
+      npc_id: id,
+      npc_name: npc.name,
+      timestamp
+    };
+    memoryRepo.appendEvent(event);
+
+    // remove from active store
+    memoryRepo.delete(id);
+
+    return { id, deleted_at: timestamp, name: npc.name };
+  }
 };
