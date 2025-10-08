@@ -1,0 +1,62 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>A</epicId>
+    <storyId>03</storyId>
+    <title>查看单个 NPC</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/root/aitown-example/docs/stories/story-1.3.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>player</asA>
+    <iWant>view a single NPC via GET /npc/{id}</iWant>
+    <soThat>see the complete status and memory_log (recent/old)</soThat>
+    <tasks>- [ ] Implement GET /npc/{id} endpoint with complete response
+  - [ ] Include memory_log with recent_memory and old_memory
+  - [ ] Include inventory and brief transactions reference
+  - [ ] Handle 404 for non-existent id
+  - [ ] Handle 403 for no permission (if applicable)
+- [ ] Update npcService to support fetching complete NPC data
+- [ ] Add unit tests for service and routes
+- [ ] Add integration tests for GET /npc/{id}</tasks>
+  </story>
+
+  <acceptanceCriteria>1. GET /npc/{id} 返回 200 与完整 NPC 对象，包括 memory_log、inventory、transactions 简要引用。
+2. memory_log 中 recent_memory 包含最近 7 天条目（按时间倒序），old_memory 提供压缩摘要字段。
+3. 非存在 id 返回 404；无权限访问（若存在权限模型）返回 403。</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact path="docs/epic-stories.md" title="Epic Stories" section="A-03" snippet="Acceptance Criteria for viewing single NPC"/>
+      <artifact path="docs/tech-spec-epic-A.md" title="Tech Spec Epic A" section="Stories Covered" snippet="A-03: 查看单个 NPC"/>
+      <artifact path="docs/prd.md" title="PRD" section="FR007" snippet="Provide only read interfaces for frontend"/>
+      <artifact path="docs/solution-architecture.md" title="Solution Architecture" section="API and WebSocket Contracts" snippet="REST endpoints including GET /npc/{id}"/>
+      <artifact path="docs/tech-spec.md" title="Technical Specification" section="INPC interface" snippet="NPC data model including memory_log"/>
+    </docs>
+    <code>
+      <artifact path="src/types/index.ts" kind="interface" symbol="INPC" lines="1-20" reason="Defines NPC structure including memory_log"/>
+      <artifact path="src/routes/npc.ts" kind="route" symbol="GET /npc/{id}" lines="1-50" reason="Existing route for listing NPCs, extend for single"/>
+      <artifact path="src/services/npcService.ts" kind="service" symbol="getById" lines="1-30" reason="Service method to fetch NPC data"/>
+      <artifact path="src/repos/memoryRepo.ts" kind="repository" symbol="findById" lines="1-20" reason="Repository to retrieve NPC from memory"/>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="express" version="^4.x"/>
+        <package name="ws" version="^8.x"/>
+        <package name="vitest" version="^1.x"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>Follow existing API contract and types in src/types. Ensure response includes all fields from INPC plus memory_log. Align with testing strategy using vitest.</constraints>
+  <interfaces>
+    <interface name="INPC" kind="interface" signature="interface INPC { id: string; ... memory_log: IMemoryLog; }" path="src/types/index.ts"/>
+  </interfaces>
+  <tests>
+    <standards>Use vitest for unit and integration tests. Follow existing patterns in tests/unit and tests/routes.</standards>
+    <locations>tests/unit/npcService.test.ts, tests/routes/npc.routes.test.ts</locations>
+    <ideas>Test GET /npc/{id} returns 200 with complete NPC data; test 404 for invalid id; test memory_log structure.</ideas>
+  </tests>
+</story-context>

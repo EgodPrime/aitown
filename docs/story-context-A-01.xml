@@ -1,60 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<storyContext>
-  <story id="A-01" file="docs/stories/story-1.1.md">
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>A</epicId>
+    <storyId>01</storyId>
     <title>创建 NPC</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/root/aitown-example/docs/stories/story-1.1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
     <asA>player</asA>
     <iWant>create an NPC via POST /npc</iWant>
     <soThat>the system persists the NPC and notifies subscribers that a new NPC exists</soThat>
-    <acceptanceCriteria>
-      <ac id="AC-1">POST /npc returns 201 with a JSON object matching NPC schema (id, player_id, name, prompt, initial_stats)</ac>
-      <ac id="AC-2">Return 409 with explanatory error when player already has an active NPC</ac>
-      <ac id="AC-3">Emit WebSocket event 'npc_created' on successful creation and subscribed clients receive it</ac>
-      <ac id="AC-4">NPC is queryable in in-memory store and GET /npc/{id} returns the same data</ac>
-    </acceptanceCriteria>
-    <references>
-      <doc path="docs/epic-stories.md">Epic Stories</doc>
-      <doc path="docs/prd.md">PRD</doc>
-      <doc path="docs/tech-spec.md">Tech Spec</doc>
-      <doc path="docs/solution-architecture.md">Solution Architecture</doc>
-    </references>
-    <artifacts>
-      <docs>
-        <item path="docs/tech-spec-epic-A.md">Tech spec for Epic A (routes/npc, ws/broadcaster)</item>
-        <item path="docs/tech-spec.md">Project tech-spec with INPC model and source tree suggestions</item>
-        <item path="docs/solution-architecture.md">Solution architecture summary (event-driven state updates, broadcaster)</item>
-      </docs>
-      <tests>
-        <item path="tests/smoke/smoke.test.ts">Smoke test using mock LLM adapter demonstrating deterministic action generation</item>
-        <item path="tests/__mocks__/mockLLMAdapter.ts">Mock LLM adapter used by tests</item>
-      </tests>
-    </artifacts>
-    <code>
-      <item path="src/routes/npc.ts">Express route handlers for NPC endpoints (POST/GET/GET by id)</item>
-      <item path="src/services/npcService.ts">Service: create/get/list NPC operations and business logic</item>
-      <item path="src/repos/memoryRepo.ts">In-memory repository implementation (snapshot placeholder)</item>
-      <item path="src/ws/broadcaster.ts">WebSocket broadcaster utility (emit npc_created/state_update)</item>
-      <item path="src/adapters/mockLLM.ts">Mock LLM adapter used by tests and local simulation</item>
-      <item path="src/types/index.ts">Shared TypeScript interfaces (INPC, IAction)</item>
-      <item path="src/index.ts">Server bootstrap wiring Express + WebSocket</item>
-    </code>
-    <interfaces>
-      <interface name="INPC">
-        <fields>id, playerId, name, prompt, hunger, energy, mood, money, inventory, location, alive</fields>
-        <note>See `docs/tech-spec.md` for suggested TypeScript interface</note>
-      </interface>
-      <interface name="REST Endpoints">
-        <fields>POST /npc, GET /npc, GET /npc/{id}, PATCH /npc/{id}/prompt, DELETE /npc/{id}</fields>
-        <note>Mutations should emit WebSocket events `npc_created`/`npc_deleted` and state changes broadcast as `state_update`</note>
-      </interface>
-      <interface name="WebSocket Events">
-        <fields>npc_created, npc_deleted, state_update { timestamp, npc_id, delta_changes, new_state_snapshot, version }</fields>
-      </interface>
-    </interfaces>
-    <codeHints>
-      <hint>Repo source tree is not present; docs describe `src/routes/npc`, `src/services/npcService`, `src/ws/broadcaster`, `src/repos/memoryRepo` as implementation targets.</hint>
-      <hint>Use `tests/smoke/smoke.test.ts` and `tests/__mocks__/mockLLMAdapter.ts` as starting points for adapter and integration tests.</hint>
-    </codeHints>
-    <generatedBy>BMAD story-context workflow</generatedBy>
-    <generatedAt><!-- date system-generated --></generatedAt>
+    <tasks>
+- [ ] Implement POST /npc endpoint (validate input, persist to in-memory store)
+  - [ ] Define NPC schema and validation
+  - [ ] Persist entity with generated id and player_id association
+  - [ ] Emit `npc_created` WebSocket event on success
+- [ ] Handle conflict when player already has active NPC (return 409)
+- [ ] Implement GET /npc/{id} and GET /npc (list) endpoints for verification
+- [ ] Add unit tests for happy path and conflict path
+    </tasks>
   </story>
-</storyContext>
+
+  <acceptanceCriteria>
+1. POST /npc returns 201 and a JSON object matching NPC schema (including id, player_id, name, prompt, initial_stats).
+2. If player already has active NPC, return 409 with explanatory error message.
+3. On success, send WebSocket event `npc_created`, subscribers can receive and display new NPC.
+4. NPC can be queried in memory store and retrieved via GET /npc/{id} with same data.
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/prd.md" title="PRD" section="FR001" snippet="描述：通过 POST /npc 创建 NPC（body: { name, prompt, gender?, age? }）。请求需携带 player_id/session；每位玩家仅允许存在一条活跃 NPC。验收准则：成功返回 201 与完整 NPC 对象；系统广播 WebSocket 事件 `npc_created` 到相关订阅客户端；若玩家已存在活跃 NPC 则返回 409。" />
+      <doc path="docs/tech-spec-epic-A.md" title="Tech Spec Epic A" section="Stories Covered" snippet="A-01: 创建 NPC" />
+      <doc path="docs/epic-stories.md" title="Epic Stories" section="A-01" snippet="Acceptance Criteria: POST /npc 返回 201 并返回满足 NPC schema 的 JSON 对象（包含 id、player_id、name、prompt、initial_stats）。当玩家已经存在活跃 NPC 时返回 409 并带有解释错误消息。成功创建时发送 WebSocket 事件 `npc_created`，订阅客户端能收到并显示新 NPC。在内存存储中能查询到该 NPC，并可通过 GET /npc/{id} 读取到相同数据。" />
+    </docs>
+    <code>
+      <code path="src/types/index.ts" kind="interface" symbol="INPC" lines="?" reason="Defines the NPC schema including id, player_id, name, prompt, initial_stats" />
+      <code path="src/services/npcService.ts" kind="service" symbol="create" lines="?" reason="Implements NPC creation logic, validation, persistence, and event emission" />
+      <code path="src/routes/npc.ts" kind="route" symbol="POST /npc" lines="?" reason="Handles the POST /npc endpoint for creating NPCs" />
+      <code path="src/ws/broadcaster.ts" kind="broadcaster" symbol="emit" lines="?" reason="Emits WebSocket events like npc_created" />
+      <code path="src/repos/memoryRepo.ts" kind="repository" symbol="save" lines="?" reason="Persists NPC data in memory" />
+    </code>
+    <dependencies>
+      <node>
+        <dependency name="express" version="^4.18.2" />
+        <dependency name="ws" version="^8.13.0" />
+        <dependency name="uuid" version="^9.0.0" />
+        <dependency name="cors" version="^2.8.5" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- Follow existing API contract and types in src/types
+- Ensure WebSocket broadcasting subsystem is compatible with existing server
+- Ensure idempotency and player ownership checks
+- Broadcast `npc_created` after successful mutations
+  </constraints>
+  <interfaces>
+- POST /npc: body {name, prompt, gender?, age?}, returns 201 {id, player_id, name, prompt, initial_stats} or 409
+- GET /npc/{id}: returns NPC object
+- GET /npc: returns list of NPCs
+  </interfaces>
+  <tests>
+    <standards>Use vitest for unit tests, supertest for route tests, integration tests for WebSocket events</standards>
+    <locations>tests/unit/, tests/routes/, tests/integration/</locations>
+    <ideas>
+- Test POST /npc happy path: returns 201 with correct JSON, emits npc_created
+- Test POST /npc conflict: returns 409 when player has NPC
+- Test GET /npc/{id}: retrieves persisted NPC
+- Test WebSocket broadcast of npc_created
+    </ideas>
+  </tests>
+</story-context>

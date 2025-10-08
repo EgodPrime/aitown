@@ -1,0 +1,70 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>A</epicId>
+    <storyId>02</storyId>
+    <title>查看 NPC 列表</title>
+    <status>ContextReadyDraft</status>
+    <generatedAt>2025-10-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/root/aitown-example/docs/stories/story-1.2.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>player</asA>
+    <iWant>view NPC list via GET /npc</iWant>
+    <soThat>see the list with pagination and status snapshots</soThat>
+    <tasks>
+- [ ] Implement GET /npc endpoint with pagination support
+  - [ ] Add query parameters for limit/offset or cursor
+  - [ ] Return list of NPCs with status fields
+- [ ] Handle empty list case
+- [ ] Add unit tests for service and routes
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. GET /npc 返回 200 与列表结果，包含 pagination 元数据（limit/offset/total 或 cursor）。
+2. 列表项包含简要状态字段（hunger, energy, mood, location）以供快速渲染。
+3. 当无数据时返回空数组并正确展示 pagination 元信息。
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/prd.md" title="PRD" section="FR007" snippet="提供只读接口用于前端与调试： GET /npc (分页)、GET /npc/{id}、GET /places、GET /npc/{id}/relations、GET /npc/{id}/memory。接口应公开响应 schema，并支持分页与缓存头。" />
+      <doc path="docs/tech-spec-epic-A.md" title="Tech Spec Epic A" section="Stories Covered" snippet="A-02: 查看 NPC 列表" />
+      <doc path="docs/epic-stories.md" title="Epic Stories" section="A-02" snippet="Acceptance Criteria: GET /npc 返回 200 与列表结果，包含 pagination 元数据（limit/offset/total 或 cursor）。列表项包含简要状态字段（hunger, energy, mood, location）以供快速渲染。当无数据时返回空数组并正确展示 pagination 元信息。" />
+    </docs>
+    <code>
+      <code path="src/types/index.ts" kind="interface" symbol="INPC" lines="?" reason="Defines the NPC schema for list response" />
+      <code path="src/services/npcService.ts" kind="service" symbol="list" lines="?" reason="Implements NPC list retrieval with pagination" />
+      <code path="src/routes/npc.ts" kind="route" symbol="GET /npc" lines="?" reason="Handles the GET /npc endpoint for listing NPCs" />
+      <code path="src/repos/memoryRepo.ts" kind="repository" symbol="findAll" lines="?" reason="Retrieves all NPCs from memory with pagination" />
+    </code>
+    <dependencies>
+      <node>
+        <dependency name="express" version="^4.18.2" />
+        <dependency name="ws" version="^8.13.0" />
+        <dependency name="uuid" version="^9.0.0" />
+        <dependency name="cors" version="^2.8.5" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- Follow existing API contract and types in src/types
+- Ensure pagination follows REST API spec
+- Return only active NPCs
+  </constraints>
+  <interfaces>
+- GET /npc: query params limit, offset; returns 200 {npcs: [], pagination: {total, limit, offset}}
+  </interfaces>
+  <tests>
+    <standards>Use vitest for unit tests, supertest for route tests</standards>
+    <locations>tests/unit/, tests/routes/</locations>
+    <ideas>
+- Test GET /npc returns list with pagination
+- Test empty list returns empty array with pagination
+- Test status fields included
+    </ideas>
+  </tests>
+</story-context>

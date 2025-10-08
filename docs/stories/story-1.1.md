@@ -1,16 +1,16 @@
----
 title: "Story 1.1: 创建 NPC"
-status: Ready for Review
+status: Done
 author: Egod
 epic: A
 story_id: A-01
 story_points: 5
 priority: High
+
 ---
 
 # Story 1.1: 创建 NPC
 
-Status: Ready for Review
+Status: Done
 
 ## Story
 
@@ -87,6 +87,7 @@ Implemented POST /npc with validation, persistence, WebSocket event emission, an
 - 2025-10-08: Implemented NPC creation endpoint with validation, persistence, WebSocket events, and tests. All tasks completed.
 - 2025-10-08: Senior Developer Review notes appended.
 - 2025-10-08: Added logging for NPC creation in npcService.create.
+- 2025-10-08: Marked as Done by Scrum Master.
 
 ## Senior Developer Review (AI)
 

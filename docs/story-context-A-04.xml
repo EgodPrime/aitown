@@ -1,0 +1,67 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>A</epicId>
+    <storyId>04</storyId>
+    <title>更新单个 NPC 的 prompt</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/root/aitown-example/docs/stories/story-1.4.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>player</asA>
+    <iWant>update my NPC's prompt via PATCH /npc/{id}/prompt</iWant>
+    <soThat>modify the NPC's behavior without affecting other players' views immediately</soThat>
+    <tasks>- [ ] Implement PATCH /npc/{id}/prompt endpoint with ownership check
+  - [ ] Add ownership validation in npcService
+  - [ ] Return 403 for non-owners
+  - [ ] Return 200 with updated NPC for owners
+- [ ] Record prompt_updated event in event log
+  - [ ] Update memoryRepo to append event
+- [ ] Update npcService to handle prompt update
+- [ ] Add unit tests for service and routes
+- [ ] Add integration tests for PATCH /npc/{id}/prompt</tasks>
+  </story>
+
+  <acceptanceCriteria>1. 仅资源所有者可成功调用，成功返回 200 与更新后的对象；非所有者返回 403。
+2. 更新后，调用者的会话或随后 GET /npc/{id} 能立即看到最新 prompt，但系统不会广播该 prompt 给其他玩家。
+3. 更新操作在事件日志中记录一条 `prompt_updated` 记录（包含 actor、timestamp、diff 可选）。</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact path="docs/epic-stories.md" title="Epic Stories" section="A-04" snippet="Acceptance Criteria for updating NPC prompt" />
+      <artifact path="docs/tech-spec-epic-A.md" title="Tech Spec Epic A" section="Stories" snippet="A-04: 更新 NPC prompt" />
+      <artifact path="docs/prd.md" title="PRD" section="FR003" snippet="更新 prompt requirements" />
+      <artifact path="docs/solution-architecture.md" title="Solution Architecture" section="API and WebSocket Contracts" snippet="PATCH /npc/{id}/prompt" />
+      <artifact path="docs/tech-spec.md" title="Tech Spec" section="API" snippet="PATCH /npc/{id}/prompt" />
+    </docs>
+    <code>
+      <artifact path="src/routes/npc.ts" kind="route" symbol="PATCH /npc/{id}/prompt" lines="" reason="Existing NPC routes, need to add PATCH endpoint" />
+      <artifact path="src/services/npcService.ts" kind="service" symbol="updatePrompt" lines="" reason="Service to handle prompt update with ownership check" />
+      <artifact path="src/repos/memoryRepo.ts" kind="repo" symbol="appendEvent" lines="" reason="To record prompt_updated event" />
+      <artifact path="src/types/index.ts" kind="interface" symbol="INPC" lines="" reason="INPC interface includes prompt field" />
+    </code>
+    <dependencies>
+      <ecosystem name="Node.js">
+        <package name="express" version="^4.x" />
+        <package name="ws" version="^8.x" />
+        <package name="vitest" version="^1.x" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>Follow event-driven state updates, use memoryRepo for data access and event logging. Ensure ownership check using playerId. Do not broadcast prompt updates to other players.</constraints>
+  <interfaces>
+    <interface name="PATCH /npc/{id}/prompt" kind="API" signature="PATCH /npc/{id}/prompt body: { prompt: string }" path="src/routes/npc.ts" />
+  </interfaces>
+  <tests>
+    <standards>Use vitest for unit and integration tests. Unit tests for service, integration for routes.</standards>
+    <locations>tests/unit/npcService.test.ts, tests/routes/npc.routes.test.ts</locations>
+    <ideas>
+      <idea ac="1">Test ownership validation: non-owner returns 403</idea>
+      <idea ac="2">Test prompt update visible in GET /npc/{id}, no broadcast</idea>
+      <idea ac="3">Test event logged in memoryRepo</idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -200,7 +200,8 @@ Phase 2 (stability & ops):
 
 ## Testing Approach
 
-- Unit tests for services and adapters (vitest/jest).  
+- Unit tests for services and adapters (vitest).
+  - `npx vitest run`  
 - Integration tests for REST endpoints and WebSocket messages (supertest + ws client).  
 - Small performance test: seed 10 NPCs and verify each `state_update` completes within expected time window.
 

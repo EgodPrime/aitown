@@ -1,9 +1,12 @@
 import { INPC } from '../types';
 import { memoryRepo } from '../repos/memoryRepo';
 import { v4 as uuidv4 } from 'uuid';
+import { PROMPT_MAX_LENGTH } from '../config';
 
 export const npcService = {
   create(player_id: string, payload: Partial<INPC>) {
+    // Defensive prompt length check
+  if (payload.prompt && payload.prompt.length > PROMPT_MAX_LENGTH) throw new Error('PROMPT_TOO_LONG');
     // enforce one NPC per player (simple check)
     const existing = memoryRepo.list().find(n => n.player_id === player_id && n.alive);
     if (existing) throw new Error('PLAYER_HAS_ACTIVE_NPC');
@@ -19,7 +22,9 @@ export const npcService = {
       money: 0,
       inventory: {},
       location: 'start',
-      alive: true
+      alive: true,
+      memory_log: { recent_memory: [], old_memory: '' },
+      transactions: []
     };
     memoryRepo.save(npc);
     console.log(`NPC created: ${npc.id} for player: ${player_id}`);
@@ -28,7 +33,36 @@ export const npcService = {
   get(id: string) {
     return memoryRepo.get(id);
   },
-  list() {
-    return memoryRepo.list();
+  list(options: { limit?: number; offset?: number } = {}) {
+    return memoryRepo.findAll({
+      ...options,
+      filter: (npc: INPC) => npc.alive
+    });
+  }
+  ,
+  updatePrompt(player_id: string, id: string, newPrompt: string) {
+    const npc = memoryRepo.get(id);
+    if (!npc) throw new Error('NOT_FOUND');
+    if (npc.player_id !== player_id) throw new Error('FORBIDDEN');
+
+  if (newPrompt.length > PROMPT_MAX_LENGTH) throw new Error('PROMPT_TOO_LONG');
+
+    const oldPrompt = npc.prompt;
+    npc.prompt = newPrompt;
+    memoryRepo.save(npc);
+
+    // record event
+    const event = {
+      type: 'prompt_updated',
+      actor: player_id,
+      npc_id: id,
+      timestamp: new Date().toISOString(),
+      diff: {
+        from: oldPrompt,
+        to: newPrompt
+      }
+    };
+    memoryRepo.appendEvent(event);
+    return npc;
   }
 };
