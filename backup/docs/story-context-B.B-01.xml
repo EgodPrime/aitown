@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<StoryContext>
+	<metadata>
+		<generated_by>BMAD create-story workflow</generated_by>
+		<date>2025-10-08</date>
+		<author>Egod</author>
+		<story_file>docs/stories/story-2.1.md</story_file>
+		<story_id>B-01</story_id>
+		<epic>B</epic>
+	</metadata>
+
+	<story_summary>
+		<title>仿真时钟与日结机制</title>
+		<summary>Configurable simulation clock (default 36 minutes = 1 day), day-rollover/day-end event emission, and guaranteed-day-end transactions (guarantee credit) within bounded window.</summary>
+	</story_summary>
+
+	<sources>
+		<prd path="docs/prd.md">Contains MVP constraints and FR009 day-end / guarantee credit requirements; default sim timing: 36 minutes = 1 simulated day; decision cadence 90s; LLM timeout 5s fallback policy.</prd>
+		<tech_spec path="docs/tech-spec-epic-B.md">Simulation architecture, LLM Adapter timeout and fallback, event log & snapshot wiring, components: simulationService, adapters/llm, ws/broadcaster, events.</tech_spec>
+		<story path="docs/stories/story-2.1.md">Draft story with acceptance criteria and tasks/subtasks.</story>
+	</sources>
+
+	<assumptions>
+		<assumption>Single-node MVP deployment; leader election / distributed lock not required for initial implementation.</assumption>
+		<assumption>LLM adapter default to configured OpenAI-compatible service; mock adapter used for offline tests.</assumption>
+		<assumption>Guarantee-credit transaction creation is feature-flagged (config.sim.enable_guarantee_credit).</assumption>
+	</assumptions>
+
+	<acceptance_criteria>
+		<ac id="AC-1">GET /time returns {sim_time_iso, sim_day, sim_day_fraction, realtime_timestamp} (200)</ac>
+		<ac id="AC-2">On sim day rollover emit day_end event with timestamp, event_type="day_end", affected_npc_ids or summary, source="sim-clock" and persist to event log.</ac>
+		<ac id="AC-3">If guarantee_credit enabled, create a transaction within 1s of day_end and persist to transactions and event log; otherwise write noop/disabled event for audit.</ac>
+		<ac id="AC-4">Day-end processing is idempotent/replay-safe (use event id/version/idempotency key to prevent duplicate credits).</ac>
+		<ac id="AC-5">On failure record day_end_failed and schedule retry or mark for human intervention.</ac>
+	</acceptance_criteria>
+
+	<implementation_hints>
+		<hint>Implement a simClock/simulationService with injectable time provider (Date.now for prod, mock for tests) and config.sim.simDayDurationMs default 36*60*1000.</hint>
+		<hint>Use background queue or non-blocking handlers for day-end heavy work; write immediate event intent then process tasks asynchronously.</hint>
+		<hint>Write events to append-only event log with event id, source, timestamp; snapshot state after applying events and persist snapshot version linked to events.</hint>
+		<hint>Protect day-end work with simple leader election or distributed lock before scaling to multi-node (note in tech-spec).</hint>
+		<hint>Expose GET /time route returning sim-time info; add test-mode override to accelerate sim time in CI.</hint>
+	</implementation_hints>
+
+	<tasks>
+		<task>src/services/simClock.ts (new)</task>
+		<task>src/routes/time.ts (new)</task>
+		<task>src/config.ts add sim settings</task>
+		<task>tests/unit/simClock.test.ts</task>
+		<task>tests/integration/day-rollover.integration.test.ts</task>
+	</tasks>
+
+	<references>
+		<ref path="docs/epic-stories.md#B-01">Epic story checklist and acceptance criteria</ref>
+		<ref path="docs/prd.md">PRD</ref>
+		<ref path="docs/tech-spec-epic-B.md">Tech spec Epic B</ref>
+	</references>
+
+	<notes>
+		<note>Template files for story-context workflow were not present; context generated from available story, PRD, and tech-spec files.</note>
+	</notes>
+
+	<transaction_schema>
+		<description>Example transaction schema for guarantee-credit created at day-end</description>
+		<example>{"transaction_id":"uuid-v4","npc_id":"<npc_id>","amount":100,"type":"guarantee_credit","timestamp":"2025-10-08T12:00:00Z","source_event_id":"<event_id>","correlation_id":"<sim_day>-day_end"}</example>
+		<fields>
+			<field name="transaction_id">Unique UUID v4 for the transaction</field>
+			<field name="npc_id">Target NPC identifier</field>
+			<field name="amount">Numeric amount credited</field>
+			<field name="type">String: e.g., guarantee_credit</field>
+			<field name="timestamp">ISO8601 timestamp when transaction was created</field>
+			<field name="source_event_id">The event id that triggered this transaction</field>
+			<field name="correlation_id">Optional correlation key (e.g., sim_day + event_type) for tracing and idempotency</field>
+		</fields>
+		<note>Recommend exposing `GET /npc/{id}/transactions` to query these records; include transaction_id and source_event_id in responses.</note>
+	</transaction_schema>
+
+	<idempotency_strategy>
+		<description>Concrete idempotency and deduplication guidance for day-end processing</description>
+		<strategy>
+			Use an event-centric idempotency approach: every emitted day_end event MUST include an `event_id` (UUID v4) and an `idempotency_key` derived from `sim_day` + `event_type` (or a hash of canonical event payload). The event consumer (day-end processor) MUST record processed `event_id` or `idempotency_key` in a fast lookup (e.g., in-memory cache with persistent backing) before creating transactions.
+		</strategy>
+		<implementation_notes>
+			<note>Generate event_id at emit time. On processing, atomically check-and-set processed_event_ids (use Redis SETNX or DB unique constraint) to ensure only one processor creates transactions.</note>
+			<note>Store processed_event_ids with a TTL equal to expected replay window (e.g., 7 days) to allow historic audits while bounding storage.</note>
+			<note>Include correlation_id on created transactions pointing to the event_id and sim_day for traceability.</note>
+		</implementation_notes>
+	</idempotency_strategy>
+
+</StoryContext>
