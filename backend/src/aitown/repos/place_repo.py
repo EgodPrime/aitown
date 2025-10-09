@@ -6,7 +6,13 @@ from pydantic import BaseModel, Field
 from aitown.repos.base import NotFoundError, from_json_text, to_json_text, ConflictError
 from aitown.repos.interfaces import PlaceRepositoryInterface
 from aitown.helpers.db_helper import load_db
+import enum
 
+class PlaceTag(enum.StrEnum):
+    SHOP = "SHOP"
+    HOUSE = "HOUSE"
+    ENTERTAINMENT = "ENTERTAINMENT"
+    WORKABLE = "WORKABLE"
 
 class Place(BaseModel):
     id: Optional[str] = None

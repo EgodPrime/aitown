@@ -121,6 +121,19 @@ class ItemRepositoryInterface(RepositoryIterface):
     def delete(self, id: str) -> None:
         pass
 
+class EffectRepositoryInterface(RepositoryIterface):
+    @abstractmethod
+    def create(self, effect) -> object:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, id: str):
+        pass
+
+    @abstractmethod
+    def delete(self, id: str) -> None:
+        pass
+
 
 class RoadRepositoryInterface(RepositoryIterface):
     @abstractmethod
@@ -133,6 +146,23 @@ class RoadRepositoryInterface(RepositoryIterface):
 
     @abstractmethod
     def list_nearby(self, place_id: str) -> List[object]:
+        pass
+
+    @abstractmethod
+    def delete(self, id: str) -> None:
+        pass
+
+class MemoryEntryRepositoryInterface(RepositoryIterface):
+    @abstractmethod
+    def create(self, memory_entry) -> object:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, id: str):
+        pass
+
+    @abstractmethod
+    def list_by_npc(self, npc_id: str, limit: int = 100) -> List[MemoryEntryRepositoryInterface]:
         pass
 
     @abstractmethod

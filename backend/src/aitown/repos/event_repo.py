@@ -1,5 +1,4 @@
 from typing import Optional, List
-import sqlite3
 from pydantic import BaseModel
 from aitown.repos.base import NotFoundError, to_json_text, from_json_text
 from aitown.repos.interfaces import EventRepositoryInterface
