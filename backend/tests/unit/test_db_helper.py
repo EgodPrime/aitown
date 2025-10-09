@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from aitown.helpers import init_db as initmod
-from aitown.repos import item_repo, player_repo, place_repo, npc_repo, transactions_repo
+from aitown.helpers import db_helper as initmod
+from aitown.repos import item_repo, player_repo, place_repo, npc_repo
 
 
 def test_init_db_memory_has_tables_and_row_factory():
@@ -138,12 +138,41 @@ def test_cli_closes_file_db(monkeypatch, tmp_path):
     # patch _migration_path to use our temp dir
     monkeypatch.setattr(initmod, "_migration_path", lambda: mig)
 
+    # Mock sqlite3.connect to track if close is called
+    closed = False
+    class FakeConn:
+        def execute(self, *args, **kwargs):
+            pass
+        def executescript(self, sql):
+            pass
+        def cursor(self):
+            class C:
+                def execute(self, *a, **k):
+                    pass
+                def fetchone(self):
+                    pass
+            return C()
+        def commit(self):
+            pass
+        def close(self):
+            nonlocal closed
+            closed = True
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+
+    def fake_connect(path):
+        return FakeConn()
+
+    monkeypatch.setattr(sqlite3, "connect", fake_connect)
+
     # run _cli with a file DB and ensure it closes connection
     dbfile = tmp_path / "db.sqlite"
     monkeypatch.setattr("sys.argv", ["prog", "--db", str(dbfile)])
     # run the cli which should create the file and then close
     initmod.main()
-    assert dbfile.exists()
+    assert closed is True
 
 
 def test_init_db_invalid_type_raises():
@@ -164,17 +193,22 @@ class BadConn:
     def commit(self):
         return self._cur.commit()
 
+    def close(self):
+        self._cur.close()
+
     # deliberately do NOT support row_factory assignment
 
 
 def test_repo_initialization_with_badconn():
     bad = BadConn()
-    # constructing repos should not raise when row_factory assignment fails
-    item_repo.ItemRepository(bad)
-    player_repo.PlayerRepository(bad)
-    place_repo.PlaceRepository(bad)
-    npc_repo.NpcRepository(bad)
-    transactions_repo.TransactionsRepository(bad)
+    try:
+        # constructing repos should not raise when row_factory assignment fails
+        item_repo.ItemRepository(bad)
+        player_repo.PlayerRepository(bad)
+        place_repo.PlaceRepository(bad)
+        npc_repo.NpcRepository(bad)
+    finally:
+        bad.close()
 
 
 class NoRowFactoryConn:
@@ -192,13 +226,114 @@ class NoRowFactoryConn:
             raise AttributeError("cannot set row_factory")
         return super().__setattr__(name, value)
 
+    def close(self):
+        self._real.close()
+
 
 def test_repos_handle_row_factory_attribute_error():
     bad = NoRowFactoryConn()
-    # constructing repos should swallow AttributeError when assigning row_factory
-    item_repo.ItemRepository(bad)
-    player_repo.PlayerRepository(bad)
-    place_repo.PlaceRepository(bad)
-    npc_repo.NpcRepository(bad)
-    transactions_repo.TransactionsRepository(bad)
+    try:
+        # constructing repos should swallow AttributeError when assigning row_factory
+        item_repo.ItemRepository(bad)
+        player_repo.PlayerRepository(bad)
+        place_repo.PlaceRepository(bad)
+        npc_repo.NpcRepository(bad)
+    finally:
+        bad.close()
+
+
+def test_load_db_with_config(monkeypatch, tmp_path):
+    # Mock get_config to return a db_path
+    def mock_get_config(section):
+        if section == 'repos':
+            return {'db_path': str(tmp_path / 'test.db')}
+        raise KeyError(section)
+    
+    monkeypatch.setattr(initmod, 'get_config', mock_get_config)
+    
+    # Create a temporary migrations file
+    mig = tmp_path / "0001_init.sql"
+    mig.write_text((initmod._migration_path()).read_text())
+    monkeypatch.setattr(initmod, "_migration_path", lambda: mig)
+    
+    conn = initmod.load_db()
+    try:
+        # Check that tables exist
+        names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "player" in names
+        assert "place" in names
+        assert "item" in names
+    finally:
+        conn.close()
+
+
+def test_load_db_with_explicit_path(tmp_path):
+    # Create a temporary migrations file
+    mig = tmp_path / "0001_init.sql"
+    mig.write_text((initmod._migration_path()).read_text())
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(initmod, "_migration_path", lambda: mig)
+    
+    db_path = str(tmp_path / 'explicit.db')
+    conn = initmod.load_db(db_path)
+    try:
+        # Check that tables exist
+        names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "player" in names
+    finally:
+        conn.close()
+    monkeypatch.undo()
+
+
+def test_load_db_missing_migration_raises(monkeypatch, tmp_path):
+    def mock_get_config(section):
+        if section == 'repos':
+            return {'db_path': str(tmp_path / 'test.db')}
+        raise KeyError(section)
+    
+    monkeypatch.setattr(initmod, 'get_config', mock_get_config)
+    monkeypatch.setattr(initmod, "_migration_path", lambda: Path(tmp_path) / "nope.sql")
+    
+    with pytest.raises(FileNotFoundError):
+        initmod.load_db()
+
+
+def test_load_db_row_factory_assignment_ignored(monkeypatch, tmp_path):
+    # Mock get_config
+    def mock_get_config(section):
+        if section == 'repos':
+            return {'db_path': str(tmp_path / 'test.db')}
+        raise KeyError(section)
+    
+    monkeypatch.setattr(initmod, 'get_config', mock_get_config)
+    
+    # Create migrations file
+    mig = tmp_path / "0001_init.sql"
+    mig.write_text((initmod._migration_path()).read_text())
+    monkeypatch.setattr(initmod, "_migration_path", lambda: mig)
+    
+    # Mock sqlite3.connect to return a connection where row_factory assignment raises
+    class FakeConn:
+        def __init__(self):
+            self.closed = False
+        def execute(self, *args, **kwargs):
+            pass
+        def executescript(self, sql):
+            pass
+        def close(self):
+            self.closed = True
+        def __setattr__(self, name, value):
+            if name == "row_factory":
+                raise RuntimeError("no row factory")
+            super().__setattr__(name, value)
+    
+    def fake_connect(path):
+        return FakeConn()
+    
+    monkeypatch.setattr(sqlite3, "connect", fake_connect)
+    
+    # Should not raise
+    conn = initmod.load_db()
+    assert conn is not None
+    conn.close()
 

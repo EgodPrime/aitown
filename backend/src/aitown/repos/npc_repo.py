@@ -1,25 +1,25 @@
 from __future__ import annotations
-from dataclasses import dataclass, asdict
 from typing import Optional, List
 import uuid
 import sqlite3
+from pydantic import BaseModel
 from aitown.repos.base import NotFoundError, to_json_text, from_json_text
 from aitown.repos.interfaces import NPCRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
 
-@dataclass
-class NPC:
-    id: str
-    player_id: Optional[str]
-    name: Optional[str]
-    gender: Optional[str]
-    age: Optional[int]
-    prompt: Optional[str]
-    location_id: Optional[str]
+class NPC(BaseModel):
+    id: Optional[str] = None
+    player_id: Optional[str] = None
+    name: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
+    prompt: Optional[str] = None
+    location_id: Optional[str] = None
     hunger: int = 100
     energy: int = 100
     mood: int = 100
-    inventory: List[dict] = None
+    inventory: Optional[List[dict]] = None
     memory_id: Optional[str] = None
     is_dead: int = 0
     created_at: Optional[str] = None
@@ -27,12 +27,6 @@ class NPC:
 
 
 class NpcRepository(NPCRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-        try:
-            self.conn.row_factory = sqlite3.Row
-        except Exception:
-            pass
 
     def _row_to_npc(self, row: sqlite3.Row) -> NPC:
         inv = from_json_text(row["inventory"]) if row["inventory"] is not None else []

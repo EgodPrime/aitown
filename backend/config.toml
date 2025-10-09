@@ -1,0 +1,5 @@
+[repos]
+db_path = "aitown.db"
+
+[kernel]
+tick_interval_seconds = 90.0

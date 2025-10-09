@@ -1,26 +1,19 @@
-from dataclasses import dataclass
 from typing import Optional, List
 import sqlite3
 import uuid
+from pydantic import BaseModel
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import ItemRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
 
-@dataclass
-class Item:
-    id: str
+class Item(BaseModel):
+    id: Optional[str] = None
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class ItemRepository(ItemRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-        try:
-            self.conn.row_factory = sqlite3.Row
-        except Exception:
-            pass
-
     def create(self, item: Item) -> Item:
         if not item.id:
             item.id = str(uuid.uuid4())

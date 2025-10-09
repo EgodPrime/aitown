@@ -1,22 +1,20 @@
-from dataclasses import dataclass
 from typing import Optional, List
 import sqlite3
 import uuid
+from pydantic import BaseModel
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import RoadRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
 
-@dataclass
-class Road:
-    id: str
+class Road(BaseModel):
+    id: Optional[str] = None
     from_place: str
     to_place: str
     direction: str
 
 
 class RoadRepository(RoadRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
 
     def create(self, road: Road) -> Road:
         if not road.id:

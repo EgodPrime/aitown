@@ -6,7 +6,8 @@ from typing import Union
 import datetime
 import argparse
 
-from aitown.helpers.paths import PROJECT_ROOT
+from aitown.helpers.path_helper import PROJECT_ROOT
+from aitown.helpers.config_helper import get_config
 
 
 def _migration_path() -> Path:
@@ -67,6 +68,46 @@ def init_db(conn_or_path: Union[str, sqlite3.Connection], seed: bool = False) ->
             ("item:seed", "Seed Item", "Seed item description"),
         )
         conn.commit()
+
+    return conn
+
+
+def load_db(db_path: str = None) -> sqlite3.Connection:
+    """Load database connection, reading db_path from config if None.
+
+    Creates a connection without initializing the database schema.
+    Use init_db() if you need to initialize the database structure.
+
+    Args:
+        db_path: Optional database path. If None, reads from config.toml [repos].db_path
+
+    Returns:
+        sqlite3.Connection: database connection
+
+    Raises:
+        KeyError: if db_path is None and config doesn't contain repos.db_path
+        FileNotFoundError: if config file not found
+    """
+    if db_path is None:
+        repos_config = get_config('repos')
+        db_path = repos_config['db_path']
+
+    conn = sqlite3.connect(db_path)
+    # Ensure foreign keys behavior is consistent
+    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.row_factory = sqlite3.Row
+    except Exception:
+        # If the connection object doesn't support row_factory assignment, ignore
+        pass
+
+    mig = _migration_path()
+    if not mig.exists():
+        conn.close()
+        raise FileNotFoundError(f"Migration file not found: {mig}")
+
+    sql = mig.read_text(encoding="utf-8")
+    conn.executescript(sql)
 
     return conn
 

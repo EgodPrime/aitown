@@ -1,4 +1,4 @@
-from aitown.helpers.init_db import init_db
+from aitown.helpers.db_helper import init_db
 from aitown.repos import place_repo
 
 
@@ -33,7 +33,7 @@ def test_place_repo_crud_and_json():
 def test_create_place_without_id_generates_uuid():
     conn = init_db(":memory:")
     repo = place_repo.PlaceRepository(conn)
-    place = place_repo.Place(id=None, name="PlGen", tags=None, shop_inventory=None, created_at=None)
+    place = place_repo.Place(id=None, name="PlGen", tags=[], shop_inventory=[], created_at=None)
     created = repo.create(place)
     assert created.id is not None and created.id != ""
     fetched = repo.get_by_id(created.id)

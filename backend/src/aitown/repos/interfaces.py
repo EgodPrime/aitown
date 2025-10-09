@@ -1,9 +1,32 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import sqlite3
 from typing import List, Optional
 
+from aitown.helpers.db_helper import load_db
 
-class NPCRepositoryInterface(ABC):
+class RepositoryIterface(ABC):
+    def __init__(self, conn: Optional[sqlite3.Connection]):
+        self.created = False
+        if conn is None:
+            conn = load_db()
+            self.created = True
+        self.conn = conn
+
+        try:
+            self.conn.row_factory = sqlite3.Row
+        except Exception:
+            pass
+
+    def __del__(self):
+        if self.created and self.conn:
+            try:
+                self.conn.close()
+            except Exception: # pragma: no cover
+                pass  # pragma: no cover
+
+
+class NPCRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, npc) -> object:
         pass
@@ -25,7 +48,7 @@ class NPCRepositoryInterface(ABC):
         pass
 
 
-class PlayerRepositoryInterface(ABC):
+class PlayerRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, player) -> object:
         pass
@@ -39,7 +62,7 @@ class PlayerRepositoryInterface(ABC):
         pass
 
 
-class PlaceRepositoryInterface(ABC):
+class PlaceRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, place) -> object:
         pass
@@ -57,7 +80,7 @@ class PlaceRepositoryInterface(ABC):
         pass
 
 
-class EventRepositoryInterface(ABC):
+class EventRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def append_event(self, npc_id: Optional[str], event_type: str, payload: dict, created_at: str) -> int:
         pass
@@ -71,7 +94,7 @@ class EventRepositoryInterface(ABC):
         pass
 
 
-class TransactionsRepositoryInterface(ABC):
+class TransactionsRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def append(self, npc_id: Optional[str], item_id: Optional[str], amount: int, reason: Optional[str], created_at: str) -> int:
         pass
@@ -81,7 +104,7 @@ class TransactionsRepositoryInterface(ABC):
         pass
 
 
-class ItemRepositoryInterface(ABC):
+class ItemRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, item) -> object:
         pass
@@ -99,7 +122,7 @@ class ItemRepositoryInterface(ABC):
         pass
 
 
-class RoadRepositoryInterface(ABC):
+class RoadRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, road) -> object:
         pass

@@ -1,28 +1,22 @@
-from dataclasses import dataclass, field
 from typing import Optional, List
 import sqlite3
 import uuid
 import datetime
+from pydantic import BaseModel, Field
 from aitown.repos.base import NotFoundError, from_json_text, to_json_text, ConflictError
 from aitown.repos.interfaces import PlaceRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
 
-@dataclass
-class Place:
-    id: str
+class Place(BaseModel):
+    id: Optional[str] = None
     name: str
-    tags: List[str] = field(default_factory=list)
-    shop_inventory: List[str] = field(default_factory=list)
-    created_at: str = None
+    tags: List[str] = []
+    shop_inventory: List[str] = []
+    created_at: Optional[str] = None
 
 
 class PlaceRepository(PlaceRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-        try:
-            self.conn.row_factory = sqlite3.Row
-        except Exception:
-            pass
 
     def create(self, place: Place) -> Place:
         if not place.id:

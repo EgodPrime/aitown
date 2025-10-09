@@ -1,14 +1,14 @@
 -- Initial schema for aitown MVP
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE player (
+CREATE TABLE IF NOT EXISTS player (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   password_hash TEXT,
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE place (
+CREATE TABLE IF NOT EXISTS place (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   tags TEXT,
@@ -16,7 +16,7 @@ CREATE TABLE place (
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE road (
+CREATE TABLE IF NOT EXISTS road (
   id TEXT PRIMARY KEY,
   from_place TEXT NOT NULL,
   to_place TEXT NOT NULL,
@@ -25,13 +25,13 @@ CREATE TABLE road (
   FOREIGN KEY(to_place)   REFERENCES place(id) ON DELETE CASCADE
 );
 
-CREATE TABLE item (
+CREATE TABLE IF NOT EXISTS item (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT
 );
 
-CREATE TABLE npc (
+CREATE TABLE IF NOT EXISTS npc (
   id TEXT PRIMARY KEY,
   player_id TEXT,
   name TEXT,
@@ -52,7 +52,7 @@ CREATE TABLE npc (
   FOREIGN KEY(memory_id) REFERENCES npc_memory(npc_id) ON DELETE CASCADE
 );
 
-CREATE TABLE memory_entry (
+CREATE TABLE IF NOT EXISTS memory_entry (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   npc_id TEXT,
   text TEXT,
@@ -60,37 +60,23 @@ CREATE TABLE memory_entry (
   FOREIGN KEY(npc_id) REFERENCES npc(id) ON DELETE CASCADE
 );
 
-CREATE TABLE npc_memory (
+CREATE TABLE IF NOT EXISTS npc_memory (
   npc_id TEXT PRIMARY KEY,
   long_memory TEXT,
   recent_memory TEXT
 );
 
-CREATE TABLE event (
+CREATE TABLE IF NOT EXISTS event (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  npc_id TEXT,
   event_type TEXT,
   payload TEXT,
   created_at TEXT,
   processed INTEGER DEFAULT 0,
-  processed_at TEXT,
-  FOREIGN KEY(npc_id) REFERENCES npc(id) ON DELETE CASCADE
+  processed_at TEXT
 );
 
 
-CREATE TABLE transactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  npc_id TEXT,
-  item_id TEXT,
-  amount INTEGER,
-  reason TEXT,
-  created_at TEXT,
-  FOREIGN KEY(npc_id) REFERENCES npc(id) ON DELETE SET NULL,
-  FOREIGN KEY(item_id) REFERENCES item(id) ON DELETE SET NULL
-);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_npc_player ON npc(player_id);
 CREATE INDEX IF NOT EXISTS idx_npc_location ON npc(location_id);
-CREATE INDEX IF NOT EXISTS idx_event_npc_created_at ON event(npc_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_transactions_npc ON transactions(npc_id);

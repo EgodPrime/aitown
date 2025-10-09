@@ -1,32 +1,29 @@
-from dataclasses import dataclass
 from typing import Optional, List
 import sqlite3
+from pydantic import BaseModel
 from aitown.repos.base import NotFoundError, to_json_text, from_json_text
 from aitown.repos.interfaces import EventRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
-
-@dataclass
-class Event:
-    id: Optional[int]
-    npc_id: Optional[str]
+class Event(BaseModel):
+    id: Optional[int] = None
+    npc_id: Optional[str] = None
     event_type: str
-    payload: dict
-    created_at: str
+    payload: dict = {}
+    created_at: Optional[str] = None
     processed: int = 0
     processed_at: Optional[str] = None
 
 
 class EventRepository(EventRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-
-    def append_event(self, npc_id: Optional[str], event_type: str, payload: dict, created_at: str) -> int:
+    def append_event(self, event: Event) -> int:
         cur = self.conn.cursor()
         cur.execute(
-            "INSERT INTO event (npc_id, event_type, payload, created_at, processed) VALUES (?, ?, ?, ?, 0)",
-            (npc_id, event_type, to_json_text(payload), created_at),
+            "INSERT INTO event (event_type, payload, created_at, processed) VALUES (?, ?, ?, 0)",
+            (event.event_type, to_json_text(event.payload), event.created_at),
         )
         self.conn.commit()
+
         return cur.lastrowid
 
     def fetch_unprocessed(self, limit: int = 100) -> List[Event]:
@@ -35,7 +32,7 @@ class EventRepository(EventRepositoryInterface):
         rows = cur.fetchall()
         events = []
         for r in rows:
-            events.append(Event(id=r["id"], npc_id=r["npc_id"], event_type=r["event_type"], payload=from_json_text(r["payload"]) or {}, created_at=r["created_at"], processed=r["processed"], processed_at=r["processed_at"]))
+            events.append(Event(id=r["id"], event_type=r["event_type"], payload=from_json_text(r["payload"]) or {}, created_at=r["created_at"], processed=r["processed"], processed_at=r["processed_at"]))
         return events
 
     def mark_processed(self, event_id: int, processed_at: str) -> None:

@@ -1,0 +1,65 @@
+<story-context id="aitown.story-context" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>1</storyId>
+    <title>核心业务逻辑与服务（Domain Logic & Services）</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-09T00:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-2.1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer of the simulation platform</asA>
+    <iWant>a cohesive core services module that implements the simulation clock, event bus and persistence, action executors, memory manager, and service layer</iWant>
+    <soThat>NPCs and players can be simulated reliably, events persisted, and services exposed for API/WS consumption</soThat>
+    <tasks>
+      <task>Implement SimClock with controls and tick emission</task>
+      <task>Implement Event Bus with persistence adapter</task>
+      <task>Implement Action Executors (move,eat,sleep,work,buy,sell,idle)</task>
+      <task>Implement Memory Manager with summarization</task>
+      <task>Implement npc_service and player_service APIs</task>
+      <task>Define and implement simulation kernel/runtime API</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac>SimClock supports start/stop/step/scale and emits tick events</ac>
+    <ac>Event Bus publishes/subscribes and persists to event table</ac>
+    <ac>Action Executors update entity state correctly</ac>
+    <ac>Memory Manager retains 7 days and summarizes to long memory</ac>
+    <ac>Service layer exposes npc_service and player_service; simulation kernel is runtime core</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/design.md">Design doc describing Simulation Engine, Event Bus, Memory Manager</doc>
+      <doc path="docs/epic-stories.md">Epic B descriptions and acceptance criteria</doc>
+      <doc path="docs/tech-spec.md">Technical decisions and recommended Event Bus pattern</doc>
+    </docs>
+    <code>
+      <file path="backend/migrations/0001_init.sql">DB schema including event table</file>
+      <file path="backend/src/aitown/repos/event_repo.py">Event repository implementation</file>
+    </code>
+    <dependencies>
+      <item>Python packages listed in pyproject.toml / backend</item>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Kernel runtime (SimClock) must not be implemented as a high-level service; services use runtime interface.</constraint>
+    <constraint>Event ordering and replayability must be preserved via Event Bus and event table.</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>SimClock runtime API (start, stop, step, set_scale, subscribe_ticks)</interface>
+    <interface>Event Bus publish/subscribe API and persistence adapter interface</interface>
+  </interfaces>
+
+  <tests>
+    <standards>pytest; temporary SQLite DB for integration tests</standards>
+    <locations>backend/tests/unit/, backend/tests/integration/</locations>
+    <ideas>Unit tests for SimClock timing and scale; integration tests for end-to-end action flow</ideas>
+  </tests>
+
+</story-context>

@@ -1,27 +1,22 @@
-from dataclasses import dataclass
 from typing import Optional
 import sqlite3
 import uuid
 import datetime
+from pydantic import BaseModel
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import PlayerRepositoryInterface
+from aitown.helpers.db_helper import load_db
 
 
-@dataclass
-class Player:
-    id: str
+class Player(BaseModel):
+    id: Optional[str] = None
     display_name: str
-    password_hash: Optional[str]
-    created_at: str
+    password_hash: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class PlayerRepository(PlayerRepositoryInterface):
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-        try:
-            self.conn.row_factory = sqlite3.Row
-        except Exception:
-            pass
+
 
     def create(self, player: Player) -> Player:
         if not player.id:

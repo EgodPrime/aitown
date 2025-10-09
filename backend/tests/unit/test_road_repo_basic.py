@@ -1,4 +1,4 @@
-from aitown.helpers.init_db import init_db
+from aitown.helpers.db_helper import init_db
 from aitown.repos import road_repo
 
 

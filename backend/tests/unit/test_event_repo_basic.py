@@ -1,4 +1,4 @@
-from aitown.helpers.init_db import init_db
+from aitown.helpers.db_helper import init_db
 from aitown.repos import event_repo
 import datetime
 
@@ -10,7 +10,8 @@ def test_event_repo_append_fetch_mark():
 
     now = datetime.datetime.now().isoformat()
     payload = {"foo": "bar"}
-    eid = repo.append_event(npc_id=None, event_type="test_event", payload=payload, created_at=now)
+    evt = event_repo.Event(id=None, event_type="test_event", payload=payload, created_at=now)
+    eid = repo.append_event(evt)
     assert isinstance(eid, int)
 
     events = repo.fetch_unprocessed(limit=10)
