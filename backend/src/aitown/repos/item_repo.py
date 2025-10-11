@@ -1,3 +1,8 @@
+"""Item repository and item model.
+
+Provides Item pydantic model and ItemRepository for DB operations.
+"""
+
 import enum
 import sqlite3
 import uuid
@@ -17,6 +22,7 @@ class ItemType(enum.StrEnum):
 
 
 class Item(BaseModel):
+    """Represents an in-game item and its metadata."""
     id: Optional[str] = None
     name: str
     value: int = 0
@@ -27,7 +33,12 @@ class Item(BaseModel):
 
 
 class ItemRepository(ItemRepositoryInterface):
+    """SQLite-backed repository for Item objects."""
     def create(self, item: Item) -> Item:
+        """Persist a new Item to the database and return it.
+
+        Raises ConflictError if id conflicts.
+        """
         if not item.id:
             item.id = str(uuid.uuid4())
         cur = self.conn.cursor()
@@ -52,6 +63,7 @@ class ItemRepository(ItemRepositoryInterface):
         return item
 
     def get_by_id(self, id: str) -> Item:
+        """Return an Item by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM item WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -67,6 +79,7 @@ class ItemRepository(ItemRepositoryInterface):
         )
 
     def list_all(self) -> List[Item]:
+        """Return all items stored in the DB."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM item")
         rows = cur.fetchall()
@@ -83,6 +96,7 @@ class ItemRepository(ItemRepositoryInterface):
         ]
 
     def delete(self, id: str) -> None:
+        """Delete an item by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM item WHERE id = ?", (id,))
         if cur.rowcount == 0:

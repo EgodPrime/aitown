@@ -1,3 +1,8 @@
+"""Player repository and model.
+
+Defines a simple Player model and repository for persistence.
+"""
+
 import datetime
 import sqlite3
 import uuid
@@ -10,6 +15,7 @@ from aitown.repos.interfaces import PlayerRepositoryInterface
 
 
 class Player(BaseModel):
+    """Represents a player account for NPC ownership and authentication."""
     id: Optional[str] = None
     display_name: str
     password_hash: Optional[str] = None
@@ -17,8 +23,10 @@ class Player(BaseModel):
 
 
 class PlayerRepository(PlayerRepositoryInterface):
+    """SQLite-backed repository for Player objects."""
 
     def create(self, player: Player) -> Player:
+        """Persist a Player record and return it."""
         if not player.id:
             player.id = str(uuid.uuid4())
         if not player.created_at:
@@ -43,6 +51,7 @@ class PlayerRepository(PlayerRepositoryInterface):
         return player
 
     def get_by_id(self, id: str) -> Player:
+        """Retrieve a player by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM player WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -56,6 +65,7 @@ class PlayerRepository(PlayerRepositoryInterface):
         )
 
     def delete(self, id: str) -> None:
+        """Delete a player record or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM player WHERE id = ?", (id,))
         if cur.rowcount == 0:

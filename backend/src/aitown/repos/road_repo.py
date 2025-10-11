@@ -1,3 +1,8 @@
+"""Road repository and the Road model.
+
+Represents bidirectional connections between places and a repository to persist them.
+"""
+
 import uuid
 from typing import List, Optional
 
@@ -8,6 +13,7 @@ from aitown.repos.interfaces import RoadRepositoryInterface
 
 
 class Road(BaseModel):
+    """A connection between two places used for NPC movement."""
     id: Optional[str] = None
     from_place: str
     to_place: str
@@ -15,8 +21,10 @@ class Road(BaseModel):
 
 
 class RoadRepository(RoadRepositoryInterface):
+    """SQLite-backed repository for Road objects."""
 
     def create(self, road: Road) -> Road:
+        """Insert a Road and return it."""
         if not road.id:
             road.id = str(uuid.uuid4())
         cur = self.conn.cursor()
@@ -28,6 +36,7 @@ class RoadRepository(RoadRepositoryInterface):
         return road
 
     def get_by_id(self, id: str) -> Road:
+        """Return a Road by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM road WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -41,6 +50,7 @@ class RoadRepository(RoadRepositoryInterface):
         )
 
     def list_nearby(self, place_id: str) -> List[Road]:
+        """List roads connected to the given place id."""
         cur = self.conn.cursor()
         cur.execute(
             "SELECT * FROM road WHERE from_place = ? OR to_place = ?",
@@ -58,6 +68,7 @@ class RoadRepository(RoadRepositoryInterface):
         ]
 
     def delete(self, id: str) -> None:
+        """Delete a road by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM road WHERE id = ?", (id,))
         if cur.rowcount == 0:

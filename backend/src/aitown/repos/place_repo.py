@@ -1,10 +1,15 @@
+"""Place repository and models.
+
+This module provides the Place Pydantic model and a SQLite-backed PlaceRepository.
+"""
+
 import datetime
 import enum
 import sqlite3
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from aitown.repos.base import ConflictError, NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import PlaceRepositoryInterface
@@ -18,16 +23,23 @@ class PlaceTag(enum.StrEnum):
 
 
 class Place(BaseModel):
+    """Representation of a location in the world (shop/house/workplace)."""
     id: Optional[str] = None
     name: str
-    tags: List[str] = []
-    shop_inventory: List[str] = []
+    # avoid mutable default list shared between instances
+    tags: List[str] = Field(default_factory=list)
+    shop_inventory: List[str] = Field(default_factory=list)
     created_at: Optional[str] = None
 
 
 class PlaceRepository(PlaceRepositoryInterface):
+    """SQLite-backed repository for Place objects."""
 
     def create(self, place: Place) -> Place:
+        """Insert a new Place into the DB and return it.
+
+        Raises ConflictError on duplicate id.
+        """
         if not place.id:
             place.id = str(uuid.uuid4())
         if not place.created_at:
@@ -51,6 +63,7 @@ class PlaceRepository(PlaceRepositoryInterface):
         return place
 
     def get_by_id(self, id: str) -> Place:
+        """Return a Place by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM place WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -65,6 +78,7 @@ class PlaceRepository(PlaceRepositoryInterface):
         )
 
     def list_all(self) -> List[Place]:
+        """List all Place records from the DB."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM place")
         rows = cur.fetchall()
@@ -82,6 +96,7 @@ class PlaceRepository(PlaceRepositoryInterface):
         return places
 
     def delete(self, id: str) -> None:
+        """Delete a Place by id or raise NotFoundError if not present."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM place WHERE id = ?", (id,))
         if cur.rowcount == 0:

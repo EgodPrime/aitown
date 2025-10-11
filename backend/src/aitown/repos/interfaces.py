@@ -1,3 +1,8 @@
+"""Repository interfaces for persistence layer.
+
+Abstract base classes describing repository contracts used across the codebase.
+"""
+
 from __future__ import annotations
 
 import sqlite3

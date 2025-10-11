@@ -1,3 +1,8 @@
+"""NPC action implementations.
+
+Contains the ActionExecutor which implements NPC actions like move/eat/work/buy/sell.
+"""
+
 import datetime
 
 from aitown.helpers.db_helper import load_db
@@ -8,6 +13,7 @@ from aitown.repos.memory_repo import MemoryEntry, MemoryEntryRepository
 from aitown.repos.npc_repo import NpcRepository, NPCStatus
 from aitown.repos.place_repo import PlaceRepository, PlaceTag
 from aitown.repos.road_repo import RoadRepository
+from aitown.helpers.currency_helper import total_value, deduct_cost_low_first, split_amount_to_coins
 
 
 class ActionExecutor:
@@ -34,10 +40,20 @@ class ActionExecutor:
 
     @staticmethod
     def move(npc_id: str, place_id: str) -> bool:
+        """Move NPC to a target place if a connecting road exists.
+
+        Args:
+            npc_id: id of the NPC to move
+            place_id: destination place id
+
+        Returns:
+            True if move succeeded and state was updated, False otherwise.
+        """
         success = True
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
-        from_place = PlaceRepository().get_by_id(npc.location_id)
-        to_place = PlaceRepository().get_by_id(place_id)
+        # use shared repository instances from the class to avoid re-creating connections
+        from_place = ActionExecutor.place_repo.get_by_id(npc.location_id)
+        to_place = ActionExecutor.place_repo.get_by_id(place_id)
 
         available_roads = ActionExecutor.road_repo.list_nearby(npc.location_id)
         road = next(
@@ -72,6 +88,16 @@ class ActionExecutor:
 
     @staticmethod
     def eat(npc_id: str, item_id: str, item_amount: int) -> bool:
+        """Consume an item from NPC inventory and apply its effects.
+
+        Args:
+            npc_id: id of the NPC eating
+            item_id: id of the item to consume
+            item_amount: amount to consume
+
+        Returns:
+            True on success, False if inventory or item type invalid.
+        """
         success = True
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
         inventory = npc.inventory
@@ -150,6 +176,15 @@ class ActionExecutor:
         """
         在有WORKABLE标签的地点工作，消耗energy和mood，获得金钱
         """
+        """Perform work action for an NPC, adjusting stats and awarding currency.
+
+        Args:
+            npc_id: id of the NPC
+            duration_hours: number of hours to work
+
+        Returns:
+            True if the work was performed, False otherwise.
+        """
         success = True
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
         place = ActionExecutor.place_repo.get_by_id(npc.location_id)
@@ -173,25 +208,12 @@ class ActionExecutor:
         if not success:
             return False
 
-        platinum_coins = money_earned // 1000
-        gold_coins = (money_earned % 1000) // 100
-        silver_coins = (money_earned % 100) // 10
-        bronze_coins = money_earned % 10
-
-        mod_to_inventory = [
-            {"item_id": "item_platinum_coin", "amount": platinum_coins},
-            {"item_id": "item_gold_coin", "amount": gold_coins},
-            {"item_id": "item_silver_coin", "amount": silver_coins},
-            {"item_id": "item_bronze_coin", "amount": bronze_coins},
-        ]
-
-        for entry in mod_to_inventory:
-            if entry["amount"] <= 0:
+        # 将赚取的金额拆分为硬币并加入库存
+        coin_adds = split_amount_to_coins(money_earned)
+        for cid, cnt in coin_adds.items():
+            if cnt <= 0:
                 continue
-            if entry["item_id"] in inventory:
-                inventory[entry["item_id"]] += entry["amount"]
-            else:
-                inventory[entry["item_id"]] = entry["amount"]
+            inventory[cid] = inventory.get(cid, 0) + cnt
 
         ActionExecutor.npc_repo.update(
             npc_id,
@@ -211,6 +233,14 @@ class ActionExecutor:
 
     @staticmethod
     def buy(npc_id: str, item_id: str, item_amount: int) -> bool:
+        """Buy an item from the current place's shop inventory.
+
+        This function checks stock, computes total cost, deducts coins from the NPC
+        (using smaller denominations first per tests), updates inventory and records memory.
+
+        Returns:
+            True on success, False on failure (insufficient stock or funds).
+        """
         success = True
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
         inventory = npc.inventory
@@ -225,17 +255,7 @@ class ActionExecutor:
             success = False
 
         # 计算NPC现有的金币总额
-        total_money = 0
-        coin_values = {
-            "item_platinum_coin": 1000,
-            "item_gold_coin": 100,
-            "item_silver_coin": 10,
-            "item_bronze_coin": 1,
-        }
-
-        for coin_id, value in coin_values.items():
-            if coin_id in inventory:
-                total_money += inventory[coin_id] * value
+        total_money = total_value(inventory)
 
         total_cost = item.value * item_amount
         if success and total_money < total_cost:
@@ -248,15 +268,11 @@ class ActionExecutor:
         if not success:
             return False
 
-        # 扣除金币，优先使用低面值货币
-        remaining_cost = total_cost
-        for coin_id, value in sorted(coin_values.items(), key=lambda x: x[1]):
-            if coin_id in inventory and inventory[coin_id] > 0:
-                needed_coins = remaining_cost // value
-                if needed_coins > 0:
-                    coins_to_use = min(needed_coins, inventory[coin_id])
-                    inventory[coin_id] -= coins_to_use
-                    remaining_cost -= coins_to_use * value
+        # 扣除金币，使用 currency helper（低面值优先以匹配测试行为）
+        inventory, deducted_ok = deduct_cost_low_first(inventory, total_cost)
+        if not deducted_ok:
+            # unexpected: not enough funds (should have been caught above)
+            return False
 
         # 添加购买的物品到NPC库存
         if item_id in inventory:
@@ -280,6 +296,16 @@ class ActionExecutor:
 
     @staticmethod
     def sell(npc_id: str, item_id: str, item_amount: int) -> bool:
+        """Sell an item from NPC inventory at a shop, converting value to coins.
+
+        Args:
+            npc_id: id of the NPC selling
+            item_id: id of the item to sell
+            item_amount: quantity to sell
+
+        Returns:
+            True on success, False if place not a shop or insufficient inventory.
+        """
         success = True
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
         inventory = npc.inventory
@@ -332,6 +358,14 @@ class ActionExecutor:
 
     @staticmethod
     def idle(npc_id: str) -> bool:
+        """Make the NPC idle: small mood increase and energy decrease.
+
+        Args:
+            npc_id: id of the NPC to idle
+
+        Returns:
+            True after updating NPC state and recording memory.
+        """
         npc = ActionExecutor.npc_repo.get_by_id(npc_id)
         place = ActionExecutor.place_repo.get_by_id(npc.location_id)
 
@@ -355,6 +389,11 @@ class ActionExecutor:
 
     @staticmethod
     def event_listener(event: Event):
+        """Dispatch an incoming event to the corresponding ActionExecutor method.
+
+        The listener interprets the event payload and calls the matching action.
+        If the action fails, falls back to idle.
+        """
         payload = event.payload
         action_type = payload.get("action_type")
         res = True

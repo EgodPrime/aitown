@@ -1,3 +1,8 @@
+"""Event repository and Event model.
+
+Represents queued events and provides a simple repository for persistence.
+"""
+
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -7,6 +12,7 @@ from aitown.repos.interfaces import EventRepositoryInterface
 
 
 class Event(BaseModel):
+    """A queued event that will be processed by the event bus."""
     id: Optional[int] = None
     npc_id: Optional[str] = None
     event_type: str
@@ -17,7 +23,9 @@ class Event(BaseModel):
 
 
 class EventRepository(EventRepositoryInterface):
+    """SQLite-backed repository for Event objects."""
     def append_event(self, event: Event) -> int:
+        """Append an event to the DB and return the new row id."""
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO event (event_type, payload, created_at, processed) VALUES (?, ?, ?, 0)",
@@ -28,6 +36,7 @@ class EventRepository(EventRepositoryInterface):
         return cur.lastrowid
 
     def fetch_unprocessed(self, limit: int = 100) -> List[Event]:
+        """Return up to `limit` unprocessed events ordered by id."""
         cur = self.conn.cursor()
         cur.execute(
             "SELECT * FROM event WHERE processed = 0 ORDER BY id ASC LIMIT ?", (limit,)
@@ -48,6 +57,7 @@ class EventRepository(EventRepositoryInterface):
         return events
 
     def mark_processed(self, event_id: int, processed_at: str) -> None:
+        """Mark the event row as processed with a timestamp."""
         cur = self.conn.cursor()
         cur.execute(
             "UPDATE event SET processed = 1, processed_at = ? WHERE id = ?",

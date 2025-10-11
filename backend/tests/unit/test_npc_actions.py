@@ -548,6 +548,48 @@ def test_buy_fails_when_funds_insufficient(action_env, monkeypatch):
     assert ActionExecutor.buy("npc:buyer3", "item:gem", 1) is False
 
 
+def test_buy_handles_deduction_failure_gracefully(action_env, monkeypatch):
+    """Simulate a deduction routine failure (deduct_cost_low_first returns False)
+    and ensure ActionExecutor.buy returns False and does not modify inventory.
+    """
+    item_repo = action_env["item_repo"]
+    npc_repo = action_env["npc_repo"]
+    place_repo = action_env["place_repo"]
+
+    item_repo.create(
+        Item(id="item:toys", name="Toy", value=2, type=ItemType.MISC, effect_ids=[])
+    )
+    place_repo.create(
+        Place(id="place:shop", name="Toy Shop", tags=[PlaceTag.SHOP.value], shop_inventory=[])
+    )
+    npc_repo.create(
+        NPC(
+            id="npc:buyer4",
+            name="Tess",
+            location_id="place:shop",
+            inventory={"item_bronze_coin": 10},
+        )
+    )
+
+    class FakeShop:
+        def __init__(self):
+            self.id = "place:shop"
+            self.name = "Toy Shop"
+            self.tags = [PlaceTag.SHOP.value]
+            self.shop_inventory = {"item:toys": 5}
+
+    monkeypatch.setattr(place_repo, "get_by_id", lambda _pid: FakeShop())
+
+    # Patch the deduct function to simulate unexpected failure despite adequate funds
+    import aitown.kernel.npc_actions as npc_actions_module
+
+    monkeypatch.setattr(npc_actions_module, "deduct_cost_low_first", lambda inv, cost: (inv, False))
+
+    assert ActionExecutor.buy("npc:buyer4", "item:toys", 1) is False
+    # inventory should remain unchanged
+    assert npc_repo.get_by_id("npc:buyer4").inventory.get("item:toys") is None
+
+
 def test_sell_success_distributes_coins(action_env, monkeypatch):
     item_repo = action_env["item_repo"]
     npc_repo = action_env["npc_repo"]

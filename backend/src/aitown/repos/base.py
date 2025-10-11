@@ -1,11 +1,15 @@
+"""Small helpers and exceptions used by repository implementations."""
+
 from typing import Any
 
 
 class NotFoundError(Exception):
+    """Raised when a repository lookup fails to find the requested entity."""
     pass
 
 
 class ConflictError(Exception):
+    """Raised when a repository operation fails due to a uniqueness or integrity conflict."""
     pass
 
 

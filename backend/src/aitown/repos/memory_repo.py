@@ -1,3 +1,8 @@
+"""Memory entry repository and model.
+
+Stores short NPC memory entries persisted to the database.
+"""
+
 import datetime
 import sqlite3
 from typing import List, Optional
@@ -9,6 +14,7 @@ from aitown.repos.interfaces import MemoryEntryRepositoryInterface
 
 
 class MemoryEntry(BaseModel):
+    """A short persisted memory item tied to an NPC."""
     id: Optional[int] = None
     npc_id: Optional[str] = None
     content: Optional[str] = None
@@ -16,7 +22,9 @@ class MemoryEntry(BaseModel):
 
 
 class MemoryEntryRepository(MemoryEntryRepositoryInterface):
+    """Repository for storing and retrieving MemoryEntry objects."""
     def create(self, memory_entry: MemoryEntry) -> MemoryEntry:
+        """Insert a MemoryEntry and return it with assigned id."""
         if not memory_entry.created_at:
             memory_entry.created_at = datetime.datetime.now().isoformat()
         cur = self.conn.cursor()
@@ -34,6 +42,7 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         return memory_entry
 
     def get_by_id(self, id: int) -> MemoryEntry:
+        """Fetch a memory entry by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM memory_entry WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -47,6 +56,7 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         )
 
     def list_by_npc(self, npc_id: str, limit: int = 100) -> List[MemoryEntry]:
+        """List recent memory entries for a given NPC id."""
         cur = self.conn.cursor()
         cur.execute(
             "SELECT * FROM memory_entry WHERE npc_id = ? ORDER BY created_at DESC LIMIT ?",
@@ -64,6 +74,7 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         ]
 
     def delete(self, id: int) -> None:
+        """Delete a memory entry by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM memory_entry WHERE id = ?", (id,))
         if cur.rowcount == 0:

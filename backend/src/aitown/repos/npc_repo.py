@@ -1,3 +1,8 @@
+"""NPC model and repository.
+
+Defines the NPC Pydantic model and a SQLite-backed NpcRepository.
+"""
+
 from __future__ import annotations
 
 import enum
@@ -20,6 +25,7 @@ class NPCStatus(enum.StrEnum):
 
 
 class NPC(BaseModel):
+    """Persistent NPC state and metadata."""
     id: Optional[str] = None
     player_id: Optional[str] = None
     name: Optional[str] = None
@@ -40,8 +46,10 @@ class NPC(BaseModel):
 
 
 class NpcRepository(NPCRepositoryInterface):
+    """SQLite-backed repository for NPC objects."""
 
     def _row_to_npc(self, row: sqlite3.Row) -> NPC:
+        """Convert a DB row into an NPC model instance."""
         inv = from_json_text(row["inventory"]) if row["inventory"] is not None else None
         return NPC(
             id=row["id"],
@@ -63,6 +71,7 @@ class NpcRepository(NPCRepositoryInterface):
         )
 
     def create(self, npc: NPC) -> NPC:
+        """Persist a new NPC record and return the model."""
         if not npc.id:
             npc.id = str(uuid.uuid4())
         # serialize inventory mapping to JSON
@@ -92,6 +101,7 @@ class NpcRepository(NPCRepositoryInterface):
         return npc
 
     def get_by_id(self, id: str) -> NPC:
+        """Retrieve an NPC by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM npc WHERE id = ?", (id,))
         row = cur.fetchone()
@@ -100,12 +110,17 @@ class NpcRepository(NPCRepositoryInterface):
         return self._row_to_npc(row)
 
     def list_by_player(self, player_id: str) -> List[NPC]:
+        """List NPCs belonging to a player id."""
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM npc WHERE player_id = ?", (player_id,))
         rows = cur.fetchall()
         return [self._row_to_npc(r) for r in rows]
 
     def update(self, id: str, patch: dict) -> NPC:
+        """Apply a partial patch to an NPC and persist the updated state.
+
+        This implementation loads the NPC, sets attributes from `patch`, and writes back.
+        """
         # simple patch implementation: fetch, update fields in memory, write back
         npc = self.get_by_id(id)
         for k, v in patch.items():
@@ -138,6 +153,7 @@ class NpcRepository(NPCRepositoryInterface):
         return npc
 
     def delete(self, id: str) -> None:
+        """Delete an NPC by id or raise NotFoundError."""
         cur = self.conn.cursor()
         cur.execute("DELETE FROM npc WHERE id = ?", (id,))
         if cur.rowcount == 0:
