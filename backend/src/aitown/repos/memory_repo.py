@@ -1,12 +1,11 @@
-
-from typing import Optional, List
-import sqlite3
 import datetime
+import sqlite3
+from typing import List, Optional
+
 from pydantic import BaseModel
 
-from aitown.repos.interfaces import MemoryEntryRepositoryInterface
 from aitown.repos.base import NotFoundError
-from aitown.helpers.db_helper import load_db
+from aitown.repos.interfaces import MemoryEntryRepositoryInterface
 
 
 class MemoryEntry(BaseModel):
@@ -40,13 +39,29 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         row = cur.fetchone()
         if not row:
             raise NotFoundError(f"MemoryEntry not found: {id}")
-        return MemoryEntry(id=row["id"], npc_id=row["npc_id"], content=row["content"], created_at=row["created_at"])
+        return MemoryEntry(
+            id=row["id"],
+            npc_id=row["npc_id"],
+            content=row["content"],
+            created_at=row["created_at"],
+        )
 
     def list_by_npc(self, npc_id: str, limit: int = 100) -> List[MemoryEntry]:
         cur = self.conn.cursor()
-        cur.execute("SELECT * FROM memory_entry WHERE npc_id = ? ORDER BY created_at DESC LIMIT ?", (npc_id, limit))
+        cur.execute(
+            "SELECT * FROM memory_entry WHERE npc_id = ? ORDER BY created_at DESC LIMIT ?",
+            (npc_id, limit),
+        )
         rows = cur.fetchall()
-        return [MemoryEntry(id=r["id"], npc_id=r["npc_id"], content=r["content"], created_at=r["created_at"]) for r in rows]
+        return [
+            MemoryEntry(
+                id=r["id"],
+                npc_id=r["npc_id"],
+                content=r["content"],
+                created_at=r["created_at"],
+            )
+            for r in rows
+        ]
 
     def delete(self, id: int) -> None:
         cur = self.conn.cursor()
@@ -54,4 +69,3 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         if cur.rowcount == 0:
             raise NotFoundError(f"MemoryEntry not found: {id}")
         self.conn.commit()
-

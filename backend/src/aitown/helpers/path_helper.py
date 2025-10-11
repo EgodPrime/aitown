@@ -7,4 +7,4 @@ CONFIG_PATH = PROJECT_ROOT / "config.toml"
 
 SRC_ROOT = PROJECT_ROOT / "src"
 SOURCE_ROOT = SRC_ROOT / "aitown"
-REPO_ROOT = SOURCE_ROOT / "repos"  
+REPO_ROOT = SOURCE_ROOT / "repos"

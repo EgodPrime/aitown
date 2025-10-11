@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS npc (
   hunger INTEGER DEFAULT 100,
   energy INTEGER DEFAULT 100,
   mood INTEGER DEFAULT 100,
-  inventory TEXT DEFAULT '[]',
+  inventory TEXT DEFAULT '{}',
   long_memory TEXT,
   is_dead INTEGER DEFAULT 0,
   created_at TEXT,

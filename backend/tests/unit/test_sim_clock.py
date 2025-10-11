@@ -1,8 +1,9 @@
 import time
+
 import pytest
 
-from aitown.kernel.sim_clock import SimClock, InMemoryEventBus, ClockError
-from aitown.kernel.event_bus import InMemoryEventBus, EventType
+from aitown.kernel.event_bus import EventType
+from aitown.kernel.sim_clock import ClockError, SimClock
 from aitown.repos.event_repo import Event
 
 
@@ -14,14 +15,20 @@ def test_tick_phases_and_event_flow():
 
     # subscriber to action_processed to record processing
     def on_action_processed(evt):
-        processed.append(('processed', evt))
+        processed.append(("processed", evt))
 
     bus.subscribe(EventType.NPC_ACTION, on_action_processed)
 
     # subscriber to post_tick to publish an action for next pre_tick
     def on_post(evt):
         # simulate an NPC decision producing an action event
-        bus.publish(Event(event_type=EventType.NPC_ACTION, payload={"action": "do_something"}, created_at=time.strftime("%Y-%m-%dT%H:%M:%S")))
+        bus.publish(
+            Event(
+                event_type=EventType.NPC_ACTION,
+                payload={"action": "do_something"},
+                created_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
+            )
+        )
 
     bus.subscribe(EventType.NPC_DECISION, on_post)
 
@@ -30,7 +37,7 @@ def test_tick_phases_and_event_flow():
 
     # After three steps, we should have processed at least some actions
     # There should be processed entries for actions created in previous post_tick
-    assert any(p[0] == 'processed' for p in processed)
+    assert any(p[0] == "processed" for p in processed)
 
 
 def test_step_emits_ticks():
@@ -61,7 +68,7 @@ def test_subscriber_callback_called():
         called.append(payload)
 
     bus.subscribe(EventType.NPC_DECISION, cb)
-    
+
     clock.step(2)
     assert len(called) == 2
 
@@ -77,11 +84,11 @@ def test_start_already_running():
 
 def test_start_negative_tick_interval(monkeypatch):
     def mock_get_config(section):
-        if section == 'kernel':
-            return {'tick_interval_seconds': -1.0}
+        if section == "kernel":
+            return {"tick_interval_seconds": -1.0}
         raise KeyError(section)
-    
-    monkeypatch.setattr('aitown.kernel.sim_clock.get_config', mock_get_config)
+
+    monkeypatch.setattr("aitown.kernel.sim_clock.get_config", mock_get_config)
     clock = SimClock()
     with pytest.raises(ClockError, match="tick_interval_seconds must be non-negative"):
         clock.start()

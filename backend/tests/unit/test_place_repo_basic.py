@@ -7,7 +7,13 @@ def test_place_repo_crud_and_json():
     Place = place_repo.Place
     Repo = place_repo.PlaceRepository
 
-    p = Place(id="place:1", name="Market", tags=["shop", "market"], shop_inventory=["apple", "bread"], created_at=None)
+    p = Place(
+        id="place:1",
+        name="Market",
+        tags=["shop", "market"],
+        shop_inventory=["apple", "bread"],
+        created_at=None,
+    )
     repo = Repo(conn)
     created = repo.create(p)
     assert created.id == "place:1"
@@ -33,7 +39,9 @@ def test_place_repo_crud_and_json():
 def test_create_place_without_id_generates_uuid():
     conn = init_db(":memory:")
     repo = place_repo.PlaceRepository(conn)
-    place = place_repo.Place(id=None, name="PlGen", tags=[], shop_inventory=[], created_at=None)
+    place = place_repo.Place(
+        id=None, name="PlGen", tags=[], shop_inventory=[], created_at=None
+    )
     created = repo.create(place)
     assert created.id is not None and created.id != ""
     fetched = repo.get_by_id(created.id)

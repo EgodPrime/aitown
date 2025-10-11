@@ -1,11 +1,13 @@
-import sqlite3
 import datetime
+import sqlite3
+
 import pytest
+
+from aitown.helpers.db_helper import init_db
+from aitown.repos.base import ConflictError, NotFoundError
 from aitown.repos.memory_repo import MemoryEntry, MemoryEntryRepository
 from aitown.repos.npc_repo import NPC, NpcRepository
 from aitown.repos.player_repo import Player, PlayerRepository
-from aitown.helpers.db_helper import init_db
-from aitown.repos.base import NotFoundError, ConflictError
 
 
 def make_conn():
@@ -74,7 +76,11 @@ def test_list_by_npc_order_and_limit():
     # insert several entries with different created_at
     now = datetime.datetime.now()
     for i in range(5):
-        ent = MemoryEntry(npc_id="npc:A", content=f"msg {i}", created_at=(now - datetime.timedelta(minutes=i)).isoformat())
+        ent = MemoryEntry(
+            npc_id="npc:A",
+            content=f"msg {i}",
+            created_at=(now - datetime.timedelta(minutes=i)).isoformat(),
+        )
         repo.create(ent)
 
     # list should be ordered by created_at DESC

@@ -1,9 +1,11 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
 import sqlite3
+from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from aitown.helpers.db_helper import load_db
+
 
 class RepositoryIterface(ABC):
     def __init__(self, conn: Optional[sqlite3.Connection]):
@@ -22,7 +24,7 @@ class RepositoryIterface(ABC):
         if self.created and self.conn:
             try:
                 self.conn.close()
-            except Exception: # pragma: no cover
+            except Exception:  # pragma: no cover
                 pass  # pragma: no cover
 
 
@@ -82,7 +84,9 @@ class PlaceRepositoryInterface(RepositoryIterface):
 
 class EventRepositoryInterface(RepositoryIterface):
     @abstractmethod
-    def append_event(self, npc_id: Optional[str], event_type: str, payload: dict, created_at: str) -> int:
+    def append_event(
+        self, npc_id: Optional[str], event_type: str, payload: dict, created_at: str
+    ) -> int:
         pass
 
     @abstractmethod
@@ -96,7 +100,14 @@ class EventRepositoryInterface(RepositoryIterface):
 
 class TransactionsRepositoryInterface(RepositoryIterface):
     @abstractmethod
-    def append(self, npc_id: Optional[str], item_id: Optional[str], amount: int, reason: Optional[str], created_at: str) -> int:
+    def append(
+        self,
+        npc_id: Optional[str],
+        item_id: Optional[str],
+        amount: int,
+        reason: Optional[str],
+        created_at: str,
+    ) -> int:
         pass
 
     @abstractmethod
@@ -120,6 +131,7 @@ class ItemRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def delete(self, id: str) -> None:
         pass
+
 
 class EffectRepositoryInterface(RepositoryIterface):
     @abstractmethod
@@ -152,6 +164,7 @@ class RoadRepositoryInterface(RepositoryIterface):
     def delete(self, id: str) -> None:
         pass
 
+
 class MemoryEntryRepositoryInterface(RepositoryIterface):
     @abstractmethod
     def create(self, memory_entry) -> object:
@@ -162,7 +175,9 @@ class MemoryEntryRepositoryInterface(RepositoryIterface):
         pass
 
     @abstractmethod
-    def list_by_npc(self, npc_id: str, limit: int = 100) -> List[MemoryEntryRepositoryInterface]:
+    def list_by_npc(
+        self, npc_id: str, limit: int = 100
+    ) -> List[MemoryEntryRepositoryInterface]:
         pass
 
     @abstractmethod

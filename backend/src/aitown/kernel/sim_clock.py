@@ -4,13 +4,16 @@ This implementation is synchronous and test-friendly. It supports start(), stop(
 step(), and set_scale(). By default it uses a minimal in-memory event bus interface
 that expects a `publish(event_name, payload)` method.
 """
+
 from __future__ import annotations
 
 import time
-from typing import Callable, Optional
-from aitown.repos.event_repo import Event
-from aitown.kernel.event_bus import InMemoryEventBus, EventType
+from typing import Optional
+
 from aitown.helpers.config_helper import get_config
+from aitown.kernel.event_bus import EventType, InMemoryEventBus
+from aitown.kernel.npc_actions import ActionExecutor
+
 
 class ClockError(Exception):
     pass
@@ -22,6 +25,7 @@ class SimClock:
         cfg = get_config("kernel")
         self.tick_interval_seconds: float = cfg.get("tick_interval_seconds", 90.0)
         self.event_bus: InMemoryEventBus = InMemoryEventBus()
+        self.event_bus.subscribe(EventType.NPC_ACTION, ActionExecutor.event_listener)
 
         self._running: bool = False
         self._last_tick_ts: Optional[float] = None
@@ -46,8 +50,7 @@ class SimClock:
             # if a real-time delay is desired between steps, caller should sleep
 
     def _tick(self) -> None:
-        """Run one tick cycle: pre_tick -> on_tick -> post_tick.
-        """
+        """Run one tick cycle: pre_tick -> on_tick -> post_tick."""
         self.event_bus.pre_tick()
         self.event_bus.on_tick()
         self.event_bus.post_tick()

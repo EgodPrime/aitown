@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 from .path_helper import CONFIG_PATH
 

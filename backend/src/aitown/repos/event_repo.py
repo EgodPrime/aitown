@@ -1,8 +1,10 @@
-from typing import Optional, List
+from typing import List, Optional
+
 from pydantic import BaseModel
-from aitown.repos.base import NotFoundError, to_json_text, from_json_text
+
+from aitown.repos.base import from_json_text, to_json_text
 from aitown.repos.interfaces import EventRepositoryInterface
-from aitown.helpers.db_helper import load_db
+
 
 class Event(BaseModel):
     id: Optional[int] = None
@@ -27,14 +29,28 @@ class EventRepository(EventRepositoryInterface):
 
     def fetch_unprocessed(self, limit: int = 100) -> List[Event]:
         cur = self.conn.cursor()
-        cur.execute("SELECT * FROM event WHERE processed = 0 ORDER BY id ASC LIMIT ?", (limit,))
+        cur.execute(
+            "SELECT * FROM event WHERE processed = 0 ORDER BY id ASC LIMIT ?", (limit,)
+        )
         rows = cur.fetchall()
         events = []
         for r in rows:
-            events.append(Event(id=r["id"], event_type=r["event_type"], payload=from_json_text(r["payload"]) or {}, created_at=r["created_at"], processed=r["processed"], processed_at=r["processed_at"]))
+            events.append(
+                Event(
+                    id=r["id"],
+                    event_type=r["event_type"],
+                    payload=from_json_text(r["payload"]) or {},
+                    created_at=r["created_at"],
+                    processed=r["processed"],
+                    processed_at=r["processed_at"],
+                )
+            )
         return events
 
     def mark_processed(self, event_id: int, processed_at: str) -> None:
         cur = self.conn.cursor()
-        cur.execute("UPDATE event SET processed = 1, processed_at = ? WHERE id = ?", (processed_at, event_id))
+        cur.execute(
+            "UPDATE event SET processed = 1, processed_at = ? WHERE id = ?",
+            (processed_at, event_id),
+        )
         self.conn.commit()

@@ -1,14 +1,15 @@
-from typing import Callable, Dict, Iterator, List, Optional
+import enum
 from datetime import datetime
+from typing import Callable, Dict, Iterator, List
 
 from aitown.repos.event_repo import Event, EventRepository
 
-import enum
 
 class EventType(enum.StrEnum):
     NPC_DECISION = "NPC_DECISION"
     NPC_ACTION = "NPC_ACTION"
     TRASCTION = "TRANSACTION"
+
 
 class InMemoryEventBus:
     """Minimal event bus used for tests and local wiring.
@@ -16,6 +17,7 @@ class InMemoryEventBus:
     Stores published Event instances in a list and calls optional subscriber callbacks.
     Also exposes a simple drain method to consume events by type.
     """
+
     def __init__(self):
         self.events: List[Event] = []
         self.event_repo: EventRepository = EventRepository(None)
@@ -39,7 +41,7 @@ class InMemoryEventBus:
     def drain(self, event_type: str) -> List[Event]:
         matched = [evt for evt in self.events if evt.event_type == event_type]
         return matched
-    
+
     def drainI(self, event_type: str) -> Iterator[Event]:
         for evt in self.events:
             if evt.event_type == event_type:
@@ -52,7 +54,6 @@ class InMemoryEventBus:
         for evt in self.drainI(EventType.TRASCTION):
             for cb in self.subscribers.get(EventType.TRASCTION, []):
                 cb(evt)
-            
 
     def on_tick(self) -> None:
         """
@@ -66,10 +67,11 @@ class InMemoryEventBus:
         self.events = [evt for evt in self.events if evt.processed == 0]
 
     def post_tick(self) -> None:
-        evt = Event(event_type=EventType.NPC_DECISION, created_at=datetime.now().isoformat())
+        evt = Event(
+            event_type=EventType.NPC_DECISION, created_at=datetime.now().isoformat()
+        )
         self.events.append(evt)
         for evt in self.drainI(EventType.NPC_DECISION):
             for cb in self.subscribers.get(EventType.NPC_DECISION, []):
                 cb(evt)
         self.events.remove(evt)
-        

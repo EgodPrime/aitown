@@ -1,6 +1,5 @@
 from aitown.helpers.db_helper import init_db
 from aitown.repos import player_repo
-import datetime
 
 
 def test_player_repo_crud():
@@ -29,7 +28,9 @@ def test_player_repo_crud():
 def test_create_player_without_id_generates_uuid():
     conn = init_db(":memory:")
     repo = player_repo.PlayerRepository(conn)
-    player = player_repo.Player(id=None, display_name="PGen", password_hash=None, created_at=None)
+    player = player_repo.Player(
+        id=None, display_name="PGen", password_hash=None, created_at=None
+    )
     created = repo.create(player)
     assert created.id is not None and created.id != ""
     fetched = repo.get_by_id(created.id)

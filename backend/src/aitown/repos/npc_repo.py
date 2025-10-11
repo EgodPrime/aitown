@@ -1,12 +1,15 @@
 from __future__ import annotations
-from typing import Optional, List
-import uuid
-import sqlite3
-from pydantic import BaseModel
-from aitown.repos.base import NotFoundError, to_json_text, from_json_text
-from aitown.repos.interfaces import NPCRepositoryInterface
-from aitown.helpers.db_helper import load_db
+
 import enum
+import sqlite3
+import uuid
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+from aitown.repos.base import NotFoundError, from_json_text, to_json_text
+from aitown.repos.interfaces import NPCRepositoryInterface
+
 
 class NPCStatus(enum.StrEnum):
     PEACEFUL = "peaceful"
@@ -28,7 +31,8 @@ class NPC(BaseModel):
     hunger: int = 100
     energy: int = 100
     mood: int = 100
-    inventory: dict[str,int] = {}
+    # inventory is stored as JSON text in DB. Tests expect a mapping of item_id->num
+    inventory: dict[str, int] = Field(default_factory=dict)
     long_memory: Optional[str] = None
     is_dead: int = 0
     created_at: Optional[str] = None
@@ -38,7 +42,7 @@ class NPC(BaseModel):
 class NpcRepository(NPCRepositoryInterface):
 
     def _row_to_npc(self, row: sqlite3.Row) -> NPC:
-        inv = from_json_text(row["inventory"]) if row["inventory"] is not None else []
+        inv = from_json_text(row["inventory"]) if row["inventory"] is not None else None
         return NPC(
             id=row["id"],
             player_id=row["player_id"],
@@ -47,6 +51,7 @@ class NpcRepository(NPCRepositoryInterface):
             age=row["age"],
             prompt=row["prompt"],
             location_id=row["location_id"],
+            status=row["status"],
             hunger=row["hunger"],
             energy=row["energy"],
             mood=row["mood"],
@@ -60,7 +65,8 @@ class NpcRepository(NPCRepositoryInterface):
     def create(self, npc: NPC) -> NPC:
         if not npc.id:
             npc.id = str(uuid.uuid4())
-        inv_text = to_json_text(npc.inventory or [])
+        # serialize inventory mapping to JSON
+        inv_text = to_json_text(npc.inventory or {})
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO npc (id, player_id, name, gender, age, prompt, location_id, hunger, energy, mood, inventory, long_memory, is_dead, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -105,10 +111,10 @@ class NpcRepository(NPCRepositoryInterface):
         for k, v in patch.items():
             if hasattr(npc, k):
                 setattr(npc, k, v)
-        inv_text = to_json_text(npc.inventory or [])
+        inv_text = to_json_text(npc.inventory or {})
         cur = self.conn.cursor()
         cur.execute(
-            "UPDATE npc SET player_id=?, name=?, gender=?, age=?, prompt=?, location_id=?, hunger=?, energy=?, mood=?, inventory=?, long_memory=?, is_dead=?, created_at=?, updated_at=? WHERE id=?",
+            "UPDATE npc SET player_id=?, name=?, gender=?, age=?, prompt=?, location_id=?, status=?, hunger=?, energy=?, mood=?, inventory=?, long_memory=?, is_dead=?, created_at=?, updated_at=? WHERE id=?",
             (
                 npc.player_id,
                 npc.name,
@@ -116,6 +122,7 @@ class NpcRepository(NPCRepositoryInterface):
                 npc.age,
                 npc.prompt,
                 npc.location_id,
+                npc.status,
                 npc.hunger,
                 npc.energy,
                 npc.mood,

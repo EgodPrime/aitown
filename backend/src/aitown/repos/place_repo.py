@@ -1,18 +1,21 @@
-from typing import Optional, List
+import datetime
+import enum
 import sqlite3
 import uuid
-import datetime
-from pydantic import BaseModel, Field
-from aitown.repos.base import NotFoundError, from_json_text, to_json_text, ConflictError
+from typing import List, Optional
+
+from pydantic import BaseModel
+
+from aitown.repos.base import ConflictError, NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import PlaceRepositoryInterface
-from aitown.helpers.db_helper import load_db
-import enum
+
 
 class PlaceTag(enum.StrEnum):
     SHOP = "SHOP"
     HOUSE = "HOUSE"
     ENTERTAINMENT = "ENTERTAINMENT"
     WORKABLE = "WORKABLE"
+
 
 class Place(BaseModel):
     id: Optional[str] = None
@@ -33,7 +36,13 @@ class PlaceRepository(PlaceRepositoryInterface):
         try:
             cur.execute(
                 "INSERT INTO place (id, name, tags, shop_inventory, created_at) VALUES (?, ?, ?, ?, ?)",
-                (place.id, place.name, to_json_text(place.tags), to_json_text(place.shop_inventory), place.created_at),
+                (
+                    place.id,
+                    place.name,
+                    to_json_text(place.tags),
+                    to_json_text(place.shop_inventory),
+                    place.created_at,
+                ),
             )
         except sqlite3.IntegrityError as e:
             raise ConflictError(str(e))
@@ -47,7 +56,13 @@ class PlaceRepository(PlaceRepositoryInterface):
         row = cur.fetchone()
         if not row:
             raise NotFoundError(f"Place not found: {id}")
-        return Place(id=row["id"], name=row["name"], tags=from_json_text(row["tags"]) or [], shop_inventory=from_json_text(row["shop_inventory"]) or [], created_at=row["created_at"])
+        return Place(
+            id=row["id"],
+            name=row["name"],
+            tags=from_json_text(row["tags"]) or [],
+            shop_inventory=from_json_text(row["shop_inventory"]) or [],
+            created_at=row["created_at"],
+        )
 
     def list_all(self) -> List[Place]:
         cur = self.conn.cursor()

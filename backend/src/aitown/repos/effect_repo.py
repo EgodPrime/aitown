@@ -1,14 +1,17 @@
 import sqlite3
-from typing import Optional, List
+from typing import Optional
+
 from pydantic import BaseModel
-from aitown.repos.base import NotFoundError, to_json_text, from_json_text
+
+from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import EffectRepositoryInterface
 from aitown.repos.npc_repo import NpcRepository
+
 
 class Effect(BaseModel):
     id: Optional[str] = None
     name: str
-    attribute: str # hunger, energy, mood
+    attribute: str  # hunger, energy, mood
     change: int
 
     def apply_to_npc(self, npc_id: str, factor: int = 1):
@@ -26,7 +29,6 @@ class Effect(BaseModel):
                 npc_repo.update(npc_id, {"mood": npc.mood})
             case _:
                 pass
-
 
 
 class EffectRepository(EffectRepositoryInterface):
@@ -51,7 +53,12 @@ class EffectRepository(EffectRepositoryInterface):
         row = cur.fetchone()
         if not row:
             raise NotFoundError(f"Effect not found: {id}")
-        return Effect(id=row["id"], name=row["name"], attribute=row["attribute"], change=row["change"])
+        return Effect(
+            id=row["id"],
+            name=row["name"],
+            attribute=row["attribute"],
+            change=row["change"],
+        )
 
     def delete(self, id: str) -> None:
         cur = self.conn.cursor()

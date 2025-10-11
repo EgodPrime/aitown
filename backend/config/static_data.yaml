@@ -1,0 +1,162 @@
+places:
+  - id: "place:home"
+    name: "Home"
+    tags: ["HOUSE"]
+  - id: "place:market"
+    name: "Market"
+    tags: ["SHOP"]
+  - id: "place:plaza"
+    name: "Plaza"
+    tags: ["ENTERTAINMENT"]
+  - id: "place:workshop"
+    name: "Workshop"
+    tags: ["WORKABLE"]
+  - id: "place:inn"
+    name: "Inn"
+    tags: ["HOUSE", "SHOP"]
+  - id: "place:forest"
+    name: "Forest"
+    tags: []
+  - id: "place:port"
+    name: "Port"
+    tags: ["ENTERTAINMENT"]
+  - id: "place:factory"
+    name: "Factory"
+    tags: ["WORKABLE"]
+  - id: "place:shop_street"
+    name: "Shop Street"
+    tags: ["SHOP", "ENTERTAINMENT"]
+  - id: "place:camp"
+    name: "Camp Site"
+    tags: []
+
+effects:
+  - id: "effect_hunger_plus_5"
+    name: "Hunger +5"
+    attribute: "hunger"
+    change: 5
+  - id: "effect_hunger_plus_10"
+    name: "Hunger +10"
+    attribute: "hunger"
+    change: 10
+  - id: "effect_hunger_plus_30"
+    name: "Hunger +30"
+    attribute: "hunger"
+    change: 30
+  - id: "effect_hunger_plus_50"
+    name: "Hunger +50"
+    attribute: "hunger"
+    change: 50
+  - id: "effect_hunger_plus_100"
+    name: "Hunger +100"
+    attribute: "hunger"
+    change: 100
+
+  - id: "effect_energy_plus_5"
+    name: "Energy +5"
+    attribute: "energy"
+    change: 5
+  - id: "effect_energy_plus_10"
+    name: "Energy +10"
+    attribute: "energy"
+    change: 10
+  - id: "effect_energy_plus_20"
+    name: "Energy +20"
+    attribute: "energy"
+    change: 20
+  - id: "effect_energy_plus_100"
+    name: "Energy +100"
+    attribute: "energy"
+    change: 100
+
+  - id: "effect_mood_plus_50"
+    name: "Mood +50"
+    attribute: "mood"
+    change: 50
+  - id: "effect_mood_plus_100"
+    name: "Mood +100"
+    attribute: "mood"
+    change: 100
+
+items:
+  - id: "item_bronze_coin"
+    name: "铜币"
+    value: 1
+    type: "MONETARY"
+    effect_ids: []
+    description: "A bronze coin."
+  - id: "item_silver_coin"
+    name: "银币"
+    value: 10
+    type: "MONETARY"
+    effect_ids: []
+    description: "A silver coin."
+  - id: "item_gold_coin"
+    name: "金币"
+    value: 100
+    type: "MONETARY"
+    effect_ids: []
+    description: "A gold coin."
+  - id: "item_platinum_coin"
+    name: "白金币"
+    value: 1000
+    type: "MONETARY"
+    effect_ids: []
+    description: "A platinum coin."
+
+  - id: "item_apple"
+    name: "苹果"
+    value: 5
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_10"]
+    description: "A juicy red apple."
+  - id: "item_bread"
+    name: "面包"
+    value: 10
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_30"]
+    description: "A loaf of fresh bread."
+  - id: "item_hamburger"
+    name: "汉堡"
+    value: 20
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_50"]
+    description: "A piece of hamburger."
+  - id: "item_energy_bar"
+    name: "超级能量棒"
+    value: 60
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_100"]
+    description: "A super energy bar."
+
+  - id: "item_water"
+    name: "水"
+    value: 2
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_5", "effect_energy_plus_5"]
+    description: "A bottle of water."
+  - id: "item_tea"
+    name: "茶"
+    value: 5
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_10", "effect_energy_plus_10"]
+    description: "A cup of tea."
+  - id: "item_coffee"
+    name: "咖啡"
+    value: 10
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_5", "effect_energy_plus_20"]
+    description: "A cup of coffee."
+
+  - id: "item_magic_mushroom"
+    name: "魔法蘑菇"
+    value: 100
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_50", "effect_mood_plus_50"]
+    description: "A mysterious magic mushroom."
+  - id: "item_ambrosia"
+    name: "仙丹"
+    value: 500
+    type: "CONSUMABLE"
+    effect_ids: ["effect_hunger_plus_100", "effect_energy_plus_100", "effect_mood_plus_100"]
+    description: "A divine ambrosia."

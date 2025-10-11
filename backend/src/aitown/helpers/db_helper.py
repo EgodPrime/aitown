@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import argparse
+import datetime
 import sqlite3
 from pathlib import Path
 from typing import Union
-import datetime
-import argparse
 
-from aitown.helpers.path_helper import PROJECT_ROOT
 from aitown.helpers.config_helper import get_config
+from aitown.helpers.path_helper import PROJECT_ROOT
+from aitown.repos.base import to_json_text
 
 
 def _migration_path() -> Path:
@@ -15,7 +16,9 @@ def _migration_path() -> Path:
     return PROJECT_ROOT / "migrations" / "0001_init.sql"
 
 
-def init_db(conn_or_path: Union[str, sqlite3.Connection], seed: bool = False) -> sqlite3.Connection:
+def init_db(
+    conn_or_path: Union[str, sqlite3.Connection], seed: bool = False
+) -> sqlite3.Connection:
     """Initialize an SQLite database using migrations/0001_init.sql.
 
     Args:
@@ -59,14 +62,44 @@ def init_db(conn_or_path: Union[str, sqlite3.Connection], seed: bool = False) ->
             "INSERT OR IGNORE INTO player (id, display_name, password_hash, created_at) VALUES (?,?,?,?)",
             ("player:seed", "Seed Player", None, now),
         )
-        cur.execute(
-            "INSERT OR IGNORE INTO place (id, name, tags, shop_inventory, created_at) VALUES (?,?,?,?,?)",
-            ("place:seed", "Seed Place", "[]", "[]", now),
+   
+        from aitown.helpers.static_data_helper import (
+            get_effects,
+            get_items,
+            get_places,
         )
-        cur.execute(
-            "INSERT OR IGNORE INTO item (id, name, description) VALUES (?,?,?)",
-            ("item:seed", "Seed Item", "Seed item description"),
-        )
+
+        for p in get_places():
+            cur.execute(
+                "INSERT OR IGNORE INTO place (id, name, tags, shop_inventory, created_at) VALUES (?,?,?,?,?)",
+                (
+                    p.get("id"),
+                    p.get("name"),
+                    to_json_text(p.get("tags", [])),
+                    to_json_text(p.get("shop_inventory", [])),
+                    now,
+                ),
+            )
+
+        for e in get_effects():
+            cur.execute(
+                "INSERT OR IGNORE INTO effect (id, name, attribute, change) VALUES (?, ?, ?, ?)",
+                (e.get("id"), e.get("name"), e.get("attribute"), e.get("change")),
+            )
+
+        for i in get_items():
+            cur.execute(
+                "INSERT OR IGNORE INTO item (id, name, value, type, effect_ids, description) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    i.get("id"),
+                    i.get("name"),
+                    i.get("value", 0),
+                    i.get("type", "MISC"),
+                    to_json_text(i.get("effect_ids", [])),
+                    i.get("description"),
+                ),
+            )
+
         conn.commit()
 
     return conn
@@ -89,8 +122,8 @@ def load_db(db_path: str = None) -> sqlite3.Connection:
         FileNotFoundError: if config file not found
     """
     if db_path is None:
-        repos_config = get_config('repos')
-        db_path = repos_config['db_path']
+        repos_config = get_config("repos")
+        db_path = repos_config["db_path"]
 
     conn = sqlite3.connect(db_path)
     # Ensure foreign keys behavior is consistent
@@ -113,8 +146,12 @@ def load_db(db_path: str = None) -> sqlite3.Connection:
 
 
 def main():
-    p = argparse.ArgumentParser(description="Initialize SQLite DB from migrations/0001_init.sql")
-    p.add_argument("--db", default=":memory:", help="SQLite DB path or ':memory:' (default)")
+    p = argparse.ArgumentParser(
+        description="Initialize SQLite DB from migrations/0001_init.sql"
+    )
+    p.add_argument(
+        "--db", default=":memory:", help="SQLite DB path or ':memory:' (default)"
+    )
     p.add_argument("--seed", action="store_true", help="Insert minimal seed data")
     args = p.parse_args()
 

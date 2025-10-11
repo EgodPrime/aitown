@@ -22,9 +22,9 @@ so that NPCs and players can be simulated reliably, events persisted, and servic
   - [x] Unit tests for tick sequencing and speed adjustments
 - [x] Implement in-memory Event Bus with persistence adapter to `event` table
   - [x] Integration test that publishes events and asserts rows in `event` table
-- [ ] Implement Action Executors: move, eat, sleep, work, buy, sell, idle
-  - [ ] Unit tests for each executor verifying state changes
-  - [ ] Integration scenario test: simple NPC performs a sequence of actions producing expected outcomes
+- [x] Implement Action Executors: move, eat, sleep, work, buy, sell, idle
+  - [x] Unit tests for each executor verifying state changes
+  - [x] Integration scenario test: simple NPC performs a sequence of actions producing expected outcomes
 - [ ] Implement Memory Manager with retention policy and summarization hook
   - [ ] Mock LLM adapter in tests to verify summarize calls
   - [ ] Integration test to verify summaries written to long memory table
