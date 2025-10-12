@@ -151,3 +151,21 @@ def test_count_by_npc_returns_expected():
 
     assert repo.count_by_npc("npc:count") == 2
     conn.close()
+
+
+def test_create_memory_with_zero_created_at_sets_time():
+    conn = make_conn()
+    repo = MemoryEntryRepository(conn)
+    # explicitly pass created_at=0 to exercise branch that sets time when falsy
+    ent = MemoryEntry(npc_id="npc:zero", content="z", created_at=0)
+    # create player and npc to satisfy FK using repo helpers
+    player_repo = PlayerRepository(conn)
+    npc_repo = NpcRepository(conn)
+    player = Player(id="player:1", display_name="P1")
+    player_repo.create(player)
+    npc = NPC(id="npc:zero", player_id="player:1", name="Zero")
+    npc_repo.create(npc)
+    # create will update created_at to non-zero timestamp
+    saved = repo.create(ent)
+    assert saved.created_at != 0
+    conn.close()

@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import time
 
 from aitown.repos.base import NotFoundError
@@ -20,7 +20,7 @@ class Player(BaseModel):
     id: Optional[str] = None
     display_name: str
     password_hash: Optional[str] = None
-    created_at: Optional[float] = None
+    created_at: float = Field(default_factory=time.time)
 
 
 class PlayerRepository(PlayerRepositoryInterface):
@@ -30,8 +30,6 @@ class PlayerRepository(PlayerRepositoryInterface):
         """Persist a Player record and return it."""
         if not player.id:
             player.id = str(uuid.uuid4())
-        if not player.created_at:
-            player.created_at = time.time()
         cur = self.conn.cursor()
         try:
             cur.execute(

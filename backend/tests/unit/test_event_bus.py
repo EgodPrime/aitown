@@ -5,7 +5,8 @@ from aitown.repos.event_repo import Event
 def test_publish_sets_created_at_if_none():
     bus = InMemoryEventBus()
     event = Event(event_type=EventType.NPC_DECISION, payload={})
-    assert event.created_at is None
+    # created_at is auto-filled by Event model default_factory
+    assert event.created_at is not None
     bus.publish(event)
     assert event.created_at is not None
 
@@ -103,3 +104,12 @@ def test_post_tick_calls_npc_memory_subscribers():
     bus.post_tick()
     assert len(called) == 1
     assert called[0].event_type == EventType.NPC_MEMORY
+
+
+def test_publish_sets_created_at_when_zero():
+    bus = InMemoryEventBus()
+    # create an event with falsy created_at value (0) to exercise the branch
+    event = Event(event_type=EventType.NPC_DECISION, payload={}, created_at=0)
+    assert event.created_at == 0
+    bus.publish(event)
+    assert event.created_at != 0

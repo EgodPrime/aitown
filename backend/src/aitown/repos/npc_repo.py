@@ -48,7 +48,7 @@ class NPC(BaseModel):
     inventory: dict[str, int] = Field(default_factory=dict)
     long_memory: Optional[str] = None
     is_dead: int = 0
-    created_at: Optional[float] = None
+    created_at: float = Field(default_factory=time.time)
     updated_at: Optional[float] = None
 
     def remember(self, memory_repo: Optional[MemoryEntryRepository], content: str) -> bool:
@@ -115,8 +115,6 @@ class NpcRepository(NPCRepositoryInterface):
             npc.id = str(uuid.uuid4())
         # serialize inventory mapping to JSON
         inv_text = to_json_text(npc.inventory or {})
-        if not npc.created_at:
-            npc.created_at = time.time()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO npc (id, player_id, name, gender, age, prompt, location_id, hunger, energy, mood, inventory, long_memory, is_dead, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

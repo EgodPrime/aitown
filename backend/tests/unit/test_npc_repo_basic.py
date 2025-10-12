@@ -187,6 +187,19 @@ def test_row_to_npc_inventory_none_and_json():
     conn.close()
 
 
+def test_create_npc_with_zero_created_at_sets_time():
+    conn = init_db(":memory:")
+    cur = conn.cursor()
+    cur.execute("INSERT INTO player (id, display_name, password_hash, created_at) VALUES (?,?,?,?)", ("player:1","P1",None,time.time()))
+    conn.commit()
+
+    repo = npc_repo.NpcRepository(conn)
+    npc = npc_repo.NPC(id="npc:z", player_id="player:1", name="Z", created_at=0)
+    created = repo.create(npc)
+    assert created.created_at != 0
+    conn.close()
+
+
 def test_npc_remember_and_summary_memory(monkeypatch):
     # Ensure generate returns a summary so summary_memory sets long_memory
     # npc_repo imports generate at module import time, patch that symbol

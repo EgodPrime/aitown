@@ -7,7 +7,7 @@ import datetime
 import sqlite3
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import time
 
 from aitown.repos.base import NotFoundError
@@ -19,14 +19,12 @@ class MemoryEntry(BaseModel):
     id: Optional[int] = None
     npc_id: Optional[str] = None
     content: Optional[str] = None
-    created_at: Optional[float] = None
+    created_at: float = Field(default_factory=time.time)
 
 class MemoryEntryRepository(MemoryEntryRepositoryInterface):
     """Repository for storing and retrieving MemoryEntry objects."""
     def create(self, memory_entry: MemoryEntry) -> MemoryEntry:
         """Insert a MemoryEntry and return it with assigned id."""
-        if not memory_entry.created_at:
-            memory_entry.created_at = time.time()
         cur = self.conn.cursor()
         try:
             cur.execute(

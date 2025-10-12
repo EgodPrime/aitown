@@ -8,7 +8,7 @@ def test_player_repo_crud():
     Player = player_repo.Player
     Repo = player_repo.PlayerRepository
 
-    p = Player(id="player:99", display_name="Test", password_hash=None, created_at=None)
+    p = Player(id="player:99", display_name="Test", password_hash=None)
     repo = Repo(conn)
     created = repo.create(p)
     assert created.id == "player:99"
@@ -25,12 +25,19 @@ def test_player_repo_crud():
     conn.close()
 
 
+def test_player_create_with_zero_created_at_sets_time():
+    conn = init_db(":memory:")
+    repo = player_repo.PlayerRepository(conn)
+    p = player_repo.Player(id="p0", display_name="P0", password_hash=None, created_at=0)
+    created = repo.create(p)
+    assert created.created_at != 0
+    conn.close()
+
+
 def test_create_player_without_id_generates_uuid():
     conn = init_db(":memory:")
     repo = player_repo.PlayerRepository(conn)
-    player = player_repo.Player(
-        id=None, display_name="PGen", password_hash=None, created_at=None
-    )
+    player = player_repo.Player(id=None, display_name="PGen", password_hash=None)
     created = repo.create(player)
     assert created.id is not None and created.id != ""
     fetched = repo.get_by_id(created.id)
@@ -43,7 +50,7 @@ def test_player_conflict_and_notfound_additional():
     Repo = player_repo.PlayerRepository
     Player = player_repo.Player
     repo = Repo(conn)
-    p = Player(id="player:dup", display_name="P", password_hash=None, created_at=None)
+    p = Player(id="player:dup", display_name="P", password_hash=None)
     repo.create(p)
     import pytest
 
