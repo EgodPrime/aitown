@@ -13,7 +13,7 @@ from aitown.helpers.db_helper import load_db
 
 
 class RepositoryIterface(ABC):
-    def __init__(self, conn: Optional[sqlite3.Connection]):
+    def __init__(self, conn: Optional[sqlite3.Connection]=None):
         self.created = False
         if conn is None:
             conn = load_db()

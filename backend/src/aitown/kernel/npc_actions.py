@@ -4,6 +4,7 @@ Contains the ActionExecutor which implements NPC actions like move/eat/work/buy/
 """
 
 import datetime
+import time
 
 from aitown.helpers.db_helper import load_db
 from aitown.repos.effect_repo import EffectRepository
@@ -79,10 +80,7 @@ class ActionExecutor:
 
         ActionExecutor.npc_repo.update(npc_id, {"location_id": place_id})
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -126,10 +124,7 @@ class ActionExecutor:
             del inventory[item_id]
         ActionExecutor.npc_repo.update(npc_id, {"inventory": inventory})
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -164,10 +159,7 @@ class ActionExecutor:
             },
         )
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -224,10 +216,7 @@ class ActionExecutor:
             },
         )
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -287,10 +276,7 @@ class ActionExecutor:
             },
         )
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -349,10 +335,7 @@ class ActionExecutor:
 
         ActionExecutor.npc_repo.update(npc_id, {"inventory": inventory})
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -380,10 +363,7 @@ class ActionExecutor:
             },
         )
 
-        me = MemoryEntry(
-            npc_id=npc.id, content=msg, created_at=datetime.datetime.now().isoformat()
-        )
-        ActionExecutor.memory_repo.create(me)
+        npc.remember(ActionExecutor.memory_repo, msg)
 
         return True
 
@@ -425,4 +405,4 @@ class ActionExecutor:
             ActionExecutor.idle(payload["npc_id"])
 
         event.processed = 1
-        event.processed_at = datetime.datetime.now().isoformat()
+        event.processed_at = time.time()

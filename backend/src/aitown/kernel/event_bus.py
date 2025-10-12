@@ -1,4 +1,5 @@
 import enum
+import time
 from datetime import datetime
 from typing import Callable, Dict, Iterator, List
 
@@ -6,9 +7,9 @@ from aitown.repos.event_repo import Event, EventRepository
 
 
 class EventType(enum.StrEnum):
-    NPC_DECISION = "NPC_DECISION"
-    NPC_ACTION = "NPC_ACTION"
-    TRASCTION = "TRANSACTION"
+    NPC_DECISION = "NPC_DECISION" # 由EVENT_BUS创建，NPC消费 (1 producer : n consumers)
+    NPC_ACTION = "NPC_ACTION" # 由NPC创建，EVENT_BUS传递，ActionExecutor消费 (n producers : 1 consumer)
+    NPC_MEMORY = "NPC_MEMORY" # 由EVENT_BUS创建，NPC消费 (1 producer : n consumers)
 
 
 class InMemoryEventBus:
@@ -27,9 +28,9 @@ class InMemoryEventBus:
         """
         Publish an Event instance into the bus.
         """
-        # ensure created_at exists
+        # ensure created_at exists (use numeric timestamp)
         if not event.created_at:
-            event.created_at = datetime.now().isoformat()
+            event.created_at = time.time()
         self.events.append(event)
         # persist to database
         event.id = self.event_repo.append_event(event)
@@ -51,9 +52,6 @@ class InMemoryEventBus:
         for evt in self.drainI(EventType.NPC_ACTION):
             for cb in self.subscribers.get(EventType.NPC_ACTION, []):
                 cb(evt)
-        for evt in self.drainI(EventType.TRASCTION):
-            for cb in self.subscribers.get(EventType.TRASCTION, []):
-                cb(evt)
 
     def on_tick(self) -> None:
         """
@@ -62,16 +60,21 @@ class InMemoryEventBus:
         # 已处理的事件进行数据库持久化
         processed_events = [evt for evt in self.events if evt.processed == 1]
         for evt in processed_events:
-            self.event_repo.mark_processed(evt.id, datetime.now().isoformat())
+            self.event_repo.mark_processed(evt.id, time.time())
         # 删除已处理的事件
         self.events = [evt for evt in self.events if evt.processed == 0]
 
     def post_tick(self) -> None:
+        # First, process NPC_MEMORY events so memories are recorded before NPC decisions
         evt = Event(
-            event_type=EventType.NPC_DECISION, created_at=datetime.now().isoformat()
+            event_type=EventType.NPC_MEMORY, created_at=time.time()
         )
-        self.events.append(evt)
-        for evt in self.drainI(EventType.NPC_DECISION):
-            for cb in self.subscribers.get(EventType.NPC_DECISION, []):
-                cb(evt)
-        self.events.remove(evt)
+        for cb in self.subscribers.get(EventType.NPC_MEMORY, []):
+            cb(evt)
+        # Then process NPC_DECISION events to potentially generate new actions
+        evt = Event(
+            event_type=EventType.NPC_DECISION, created_at=time.time()
+        )
+        for cb in self.subscribers.get(EventType.NPC_DECISION, []):
+            cb(evt)
+

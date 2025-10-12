@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import time
 import sqlite3
 from pathlib import Path
 from typing import Union
@@ -56,7 +57,7 @@ def init_db(
     conn.executescript(sql)
 
     if seed:
-        now = datetime.datetime.now().isoformat()
+        now = time.time()
         cur = conn.cursor()
         cur.execute(
             "INSERT OR IGNORE INTO player (id, display_name, password_hash, created_at) VALUES (?,?,?,?)",
@@ -64,20 +65,26 @@ def init_db(
         )
    
         from aitown.helpers.static_data_helper import (
+            get_towns,
             get_effects,
             get_items,
             get_places,
         )
 
+        for t in get_towns():
+            cur.execute(
+                "INSERT OR IGNORE INTO town (id, name, description) VALUES (?,?,?)",
+                (t.get("id"), t.get("name"), t.get("description")),
+            )
+
         for p in get_places():
             cur.execute(
-                "INSERT OR IGNORE INTO place (id, name, tags, shop_inventory, created_at) VALUES (?,?,?,?,?)",
+                "INSERT OR IGNORE INTO place (id, name, tags, shop_inventory) VALUES (?,?,?,?)",
                 (
                     p.get("id"),
                     p.get("name"),
                     to_json_text(p.get("tags", [])),
                     to_json_text(p.get("shop_inventory", [])),
-                    now,
                 ),
             )
 

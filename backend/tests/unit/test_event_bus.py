@@ -32,27 +32,20 @@ def test_drain():
     assert drained[0] is event1
 
 
-def test_pre_tick_processes_actions_and_transactions():
+def test_pre_tick_processes_actions():
     bus = InMemoryEventBus()
     action_called = []
-    trans_called = []
 
     def action_cb(evt):
         action_called.append(evt)
 
-    def trans_cb(evt):
-        trans_called.append(evt)
-
     bus.subscribe(EventType.NPC_ACTION, action_cb)
-    bus.subscribe(EventType.TRASCTION, trans_cb)
 
     action_event = Event(event_type=EventType.NPC_ACTION, payload={})
-    trans_event = Event(event_type=EventType.TRASCTION, payload={})
-    bus.events = [action_event, trans_event]
+    bus.events = [action_event]
 
     bus.pre_tick()
     assert len(action_called) == 1
-    assert len(trans_called) == 1
 
 
 def test_on_tick_marks_processed_events():
@@ -86,3 +79,27 @@ def test_post_tick_creates_decision_event_and_calls_subscribers():
     assert len(bus.events) == initial_len  # since removed
     assert len(called) == 1
     assert called[0].event_type == EventType.NPC_DECISION
+
+
+def test_drainI_iterator_yields_expected():
+    bus = InMemoryEventBus()
+    e1 = Event(event_type=EventType.NPC_DECISION, payload={})
+    e2 = Event(event_type=EventType.NPC_ACTION, payload={})
+    bus.events = [e1, e2]
+
+    got = list(bus.drainI(EventType.NPC_DECISION))
+    assert len(got) == 1
+    assert got[0] is e1
+
+
+def test_post_tick_calls_npc_memory_subscribers():
+    bus = InMemoryEventBus()
+    called = []
+
+    def cb(evt):
+        called.append(evt)
+
+    bus.subscribe(EventType.NPC_MEMORY, cb)
+    bus.post_tick()
+    assert len(called) == 1
+    assert called[0].event_type == EventType.NPC_MEMORY

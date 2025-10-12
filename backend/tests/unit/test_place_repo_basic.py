@@ -12,7 +12,6 @@ def test_place_repo_crud_and_json():
         name="Market",
         tags=["shop", "market"],
         shop_inventory=["apple", "bread"],
-        created_at=None,
     )
     repo = Repo(conn)
     created = repo.create(p)
@@ -39,9 +38,7 @@ def test_place_repo_crud_and_json():
 def test_create_place_without_id_generates_uuid():
     conn = init_db(":memory:")
     repo = place_repo.PlaceRepository(conn)
-    place = place_repo.Place(
-        id=None, name="PlGen", tags=[], shop_inventory=[], created_at=None
-    )
+    place = place_repo.Place(id=None, name="PlGen", tags=[], shop_inventory=[])
     created = repo.create(place)
     assert created.id is not None and created.id != ""
     fetched = repo.get_by_id(created.id)
@@ -54,7 +51,7 @@ def test_place_conflict_and_notfound_additional():
     Repo = place_repo.PlaceRepository
     Place = place_repo.Place
     repo = Repo(conn)
-    pl = Place(id="place:dup", name="X", tags=["a"], shop_inventory=[], created_at=None)
+    pl = Place(id="place:dup", name="X", tags=["a"], shop_inventory=[])
     repo.create(pl)
     import pytest
 

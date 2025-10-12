@@ -10,10 +10,17 @@ import sqlite3
 import uuid
 from typing import List, Optional
 
+from aitown.repos.memory_repo import MemoryEntryRepository
+from aitown.repos.memory_repo import MemoryEntry
 from pydantic import BaseModel, Field
+import time
 
 from aitown.repos.base import NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import NPCRepositoryInterface
+from aitown.helpers.config_helper import get_config
+from aitown.helpers.llm_helper import generate
+
+cfg = get_config("npc")
 
 
 class NPCStatus(enum.StrEnum):
@@ -41,9 +48,41 @@ class NPC(BaseModel):
     inventory: dict[str, int] = Field(default_factory=dict)
     long_memory: Optional[str] = None
     is_dead: int = 0
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[float] = None
+    updated_at: Optional[float] = None
 
+    def remember(self, memory_repo: Optional[MemoryEntryRepository], content: str) -> bool:
+        """Convenience instance method to record a memory for this NPC."""
+        mr = memory_repo
+        if mr is None:
+            mr = MemoryEntryRepository()
+
+        mem = MemoryEntry(npc_id=self.id, content=content)
+        mr.create(mem)
+
+        self.long_memory = (self.long_memory or "") + "\n" + content
+        if self.long_memory and len(self.long_memory) > cfg.get("max_long_memory_chars", 8400):
+            self.summary_memory()
+    
+    def summary_memory(self) -> bool:
+        """Summarize old memories for this NPC."""
+        prompt = f"""
+# Data
+<long_memory>{self.long_memory}</long_memory>
+# Task
+`long_memory` is the long-term memory of an NPC character (named {self.name}) in a simulation game.
+Please generate a concise summary of the key events and facts from this memory.
+# Constraints
+- Summary should be no more than 100 words.
+- output the summary only wrapped in <summary>...</summary> tags.
+- The summary should start with "I am <name>, "
+# Output
+"""
+        summary = generate(prompt)
+        if summary:
+            self.long_memory = summary
+            return True
+        return False
 
 class NpcRepository(NPCRepositoryInterface):
     """SQLite-backed repository for NPC objects."""
@@ -76,6 +115,8 @@ class NpcRepository(NPCRepositoryInterface):
             npc.id = str(uuid.uuid4())
         # serialize inventory mapping to JSON
         inv_text = to_json_text(npc.inventory or {})
+        if not npc.created_at:
+            npc.created_at = time.time()
         cur = self.conn.cursor()
         cur.execute(
             "INSERT INTO npc (id, player_id, name, gender, age, prompt, location_id, hunger, energy, mood, inventory, long_memory, is_dead, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -159,3 +200,8 @@ class NpcRepository(NPCRepositoryInterface):
         if cur.rowcount == 0:
             raise NotFoundError(f"NPC not found: {id}")
         self.conn.commit()
+
+    # helper to record memory for NPC in repository context
+    def record_memory(self, npc_id: str, memory_repo, content: str):
+        npc = self.get_by_id(npc_id)
+        return npc.remember(memory_repo, content)

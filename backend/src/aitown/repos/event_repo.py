@@ -6,6 +6,7 @@ Represents queued events and provides a simple repository for persistence.
 from typing import List, Optional
 
 from pydantic import BaseModel
+import time
 
 from aitown.repos.base import from_json_text, to_json_text
 from aitown.repos.interfaces import EventRepositoryInterface
@@ -17,9 +18,9 @@ class Event(BaseModel):
     npc_id: Optional[str] = None
     event_type: str
     payload: dict = {}
-    created_at: Optional[str] = None
+    created_at: Optional[float] = None
     processed: int = 0
-    processed_at: Optional[str] = None
+    processed_at: Optional[float] = None
 
 
 class EventRepository(EventRepositoryInterface):

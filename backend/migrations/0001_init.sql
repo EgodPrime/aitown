@@ -5,15 +5,14 @@ CREATE TABLE IF NOT EXISTS player (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   password_hash TEXT,
-  created_at TEXT NOT NULL
+  created_at REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS place (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   tags TEXT,
-  shop_inventory TEXT,
-  created_at TEXT NOT NULL
+  shop_inventory TEXT
 );
 
 CREATE TABLE IF NOT EXISTS road (
@@ -56,8 +55,8 @@ CREATE TABLE IF NOT EXISTS npc (
   inventory TEXT DEFAULT '{}',
   long_memory TEXT,
   is_dead INTEGER DEFAULT 0,
-  created_at TEXT,
-  updated_at TEXT,
+  created_at REAL,
+  updated_at REAL,
   FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE SET NULL,
   FOREIGN KEY(location_id) REFERENCES place(id) ON DELETE SET NULL
 );
@@ -66,7 +65,7 @@ CREATE TABLE IF NOT EXISTS memory_entry (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   npc_id TEXT,
   content TEXT,
-  created_at TEXT,
+  created_at REAL,
   FOREIGN KEY(npc_id) REFERENCES npc(id) ON DELETE CASCADE
 );
 
@@ -74,11 +73,17 @@ CREATE TABLE IF NOT EXISTS event (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_type TEXT,
   payload TEXT,
-  created_at TEXT,
+  created_at REAL,
   processed INTEGER DEFAULT 0,
-  processed_at TEXT
+  processed_at REAL
 );
 
+CREATE TABLE IF NOT EXISTS town (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  sim_start_time REAL DEFAULT 0
+);
 
 
 -- Indexes

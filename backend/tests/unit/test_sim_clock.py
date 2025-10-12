@@ -5,6 +5,8 @@ import pytest
 from aitown.kernel.event_bus import EventType
 from aitown.kernel.sim_clock import ClockError, SimClock
 from aitown.repos.event_repo import Event
+from aitown.helpers.db_helper import init_db
+from aitown.repos.town_repo import TownRepository
 
 
 def test_tick_phases_and_event_flow():
@@ -26,7 +28,7 @@ def test_tick_phases_and_event_flow():
             Event(
                 event_type=EventType.NPC_ACTION,
                 payload={"action": "do_something"},
-                created_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                created_at=time.time(),
             )
         )
 
@@ -83,12 +85,7 @@ def test_start_already_running():
 
 
 def test_start_negative_tick_interval(monkeypatch):
-    def mock_get_config(section):
-        if section == "kernel":
-            return {"tick_interval_seconds": -1.0}
-        raise KeyError(section)
-
-    monkeypatch.setattr("aitown.kernel.sim_clock.get_config", mock_get_config)
+    monkeypatch.setattr("aitown.kernel.sim_clock.cfg_kernel", {"tick_interval_seconds": -10})
     clock = SimClock()
     with pytest.raises(ClockError, match="tick_interval_seconds must be non-negative"):
         clock.start()
@@ -98,3 +95,23 @@ def test_step_negative_steps():
     clock = SimClock()
     with pytest.raises(ClockError, match="steps must be non-negative"):
         clock.step(-1)
+
+
+def test_get_town_time_from_timestamp_returns_formatted():
+    # prepare an in-memory DB and set town start time so the static method can compute
+    conn = init_db(":memory:")
+    repo = TownRepository(conn)
+    # insert town row directly via SQL to populate created_at column used by get_by_id
+    cur = conn.cursor()
+    cur.execute("INSERT INTO town (id, name, description, sim_start_time) VALUES (?,?,?,?)", ("town:001", "X", "d", 0.0))
+    conn.commit()
+
+    # monkeypatch TownRepository used inside SimClock.get_town_time_from_timestamp
+    import aitown.kernel.sim_clock as scmod
+    monkey_repo = lambda *args, **kwargs: repo
+    setattr(scmod, "TownRepository", lambda *a, **k: repo)
+
+    # now timestamp at tick interval 90 * (24*1 + 5) -> 1 day and 5 hours
+    ts = (24 + 5) * 90.0
+    s = SimClock.get_town_time_from_timestamp(ts)
+    assert "第1天05点" in s

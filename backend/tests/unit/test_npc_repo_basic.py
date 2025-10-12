@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from aitown.helpers.db_helper import init_db
 from aitown.repos import npc_repo
@@ -60,6 +61,52 @@ def test_npc_repo_crud_roundtrip():
     conn.close()
 
 
+def test_remember_uses_module_memory_repo_and_summary_false(monkeypatch):
+    # Replace the MemoryEntryRepository class in the npc_repo module with a simple fake
+    created = []
+
+    class FakeMemRepo:
+        def __init__(self):
+            pass
+
+        def create(self, mem):
+            created.append(mem)
+
+    monkeypatch.setattr("aitown.repos.npc_repo.MemoryEntryRepository", FakeMemRepo)
+
+    # Use an NPC instance directly and call remember with None to trigger module-level instantiation
+    npc = npc_repo.NPC(id="npc:fake", player_id=None, name="Fake")
+    npc.remember(None, "an event")
+    assert len(created) == 1
+
+    # Now ensure summary_memory returns False when generate returns empty string
+    monkeypatch.setattr("aitown.repos.npc_repo.generate", lambda prompt: "")
+    npc.long_memory = "x" * 9001
+    assert npc.summary_memory() is False
+
+
+def test_remember_with_none_and_explicit_repo(monkeypatch):
+    calls = []
+
+    class FakeMemRepo2:
+        def __init__(self, conn=None):
+            pass
+
+        def create(self, mem):
+            calls.append(mem)
+
+    # monkeypatch module-level MemoryEntryRepository
+    monkeypatch.setattr("aitown.repos.npc_repo.MemoryEntryRepository", FakeMemRepo2)
+
+    npc = npc_repo.NPC(id="npc:both", name="B")
+    # call remember without repo -> should instantiate FakeMemRepo2
+    npc.remember(None, "one")
+    # call remember with explicit repo instance
+    r = FakeMemRepo2()
+    npc.remember(r, "two")
+    assert len(calls) >= 1
+
+
 def test_create_npc_without_id_generates_uuid_and_inventory_none():
     conn = init_db(":memory:")
     # ensure player exists for player_id relation
@@ -99,3 +146,100 @@ def test_npc_notfound_delete_additional():
     with pytest.raises(Exception):
         repo.delete("missing:npc")
     conn.close()
+
+
+def test_row_to_npc_inventory_none_and_json():
+    conn = init_db(":memory:")
+    # create player
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO player (id, display_name, password_hash, created_at) VALUES (?,?,?,?)",
+        ("player:1", "P1", None, "now"),
+    )
+    conn.commit()
+
+    repo = npc_repo.NpcRepository(conn)
+
+    # Insert raw row with inventory NULL
+    cur.execute(
+        "INSERT INTO npc (id, player_id, name, created_at) VALUES (?,?,?,?)",
+        ("npc:row1", "player:1", "R1", time.time()),
+    )
+    conn.commit()
+
+    n1 = repo.get_by_id("npc:row1")
+    assert isinstance(n1.inventory, dict)
+
+    # insert an npc with JSON inventory
+    import json
+
+    inv_text = json.dumps({"item:1": 2}, ensure_ascii=False)
+    cur.execute(
+        "INSERT INTO npc (id, player_id, name, inventory, created_at) VALUES (?,?,?,?,?)",
+        ("npc:row2", "player:1", "R2", inv_text, time.time()),
+    )
+    conn.commit()
+
+    n2 = repo.get_by_id("npc:row2")
+    assert isinstance(n2.inventory, dict)
+    assert n2.inventory.get("item:1") == 2
+
+    conn.close()
+
+
+def test_npc_remember_and_summary_memory(monkeypatch):
+    # Ensure generate returns a summary so summary_memory sets long_memory
+    # npc_repo imports generate at module import time, patch that symbol
+    monkeypatch.setattr("aitown.repos.npc_repo.generate", lambda prompt: "<summary>I am Bob, short</summary>")
+
+    conn = init_db(":memory:")
+    # make a player and npc
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO player (id, display_name, password_hash, created_at) VALUES (?,?,?,?)",
+        ("player:1", "P1", None, "now"),
+    )
+    conn.commit()
+
+    repo = npc_repo.NpcRepository(conn)
+    npc = npc_repo.NPC(id="npc:mem", player_id="player:1", name="Bob")
+    repo.create(npc)
+
+    # call remember passing an explicit memory repo to avoid creating repos with None
+    from aitown.repos.memory_repo import MemoryEntryRepository
+
+    mem_repo = MemoryEntryRepository(conn)
+    result = repo.record_memory("npc:mem", mem_repo, "an event happened")
+    # Verify memory repo has an entry for npc:mem
+    assert mem_repo.count_by_npc("npc:mem") >= 1
+
+    # fetch npc and set long_memory long enough to trigger summary
+    fetched = repo.get_by_id("npc:mem")
+    fetched.long_memory = "x" * 9000
+    ok = fetched.summary_memory()
+    assert ok is True
+    assert fetched.long_memory.startswith("<summary>")
+    conn.close()
+
+
+def test_remember_triggers_summary_when_long(monkeypatch):
+    # monkeypatch MemoryEntryRepository to a fake using an in-memory DB returned by load_db
+    created = []
+
+    class FakeMemRepo3:
+        def __init__(self, conn=None):
+            pass
+
+        def create(self, mem):
+            created.append(mem)
+
+    monkeypatch.setattr("aitown.repos.npc_repo.MemoryEntryRepository", FakeMemRepo3)
+    # ensure generate returns a summary so summary_memory() will set long_memory
+    monkeypatch.setattr("aitown.repos.npc_repo.generate", lambda prompt: "<summary>I am X</summary>")
+
+    npc = npc_repo.NPC(id="npc:long", name="Long")
+    npc.long_memory = "x" * 9001
+    # call remember with None so it will create FakeMemRepo3 and then call summary
+    npc.remember(None, "event")
+    # after remember, summary should have been applied (long_memory replaced by summary)
+    assert npc.long_memory.startswith("<summary>")

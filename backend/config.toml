@@ -9,3 +9,9 @@ base_url = "http://192.168.2.29:8021/v1"
 model = "qwen3-30b-a3b"
 api_key = "none"
 temperature = 0.7
+
+[npc]
+max_long_memory_chars = 8400
+
+[town]
+town_id = "town:001"

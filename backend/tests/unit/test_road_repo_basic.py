@@ -10,12 +10,12 @@ def test_road_repo_crud_and_list_nearby():
     # create two places to reference
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO place (id, name, created_at) VALUES (?, ?, ?)",
-        ("place:A", "A", "now"),
+        "INSERT INTO place (id, name) VALUES (?, ?)",
+        ("place:A", "A"),
     )
     cur.execute(
-        "INSERT INTO place (id, name, created_at) VALUES (?, ?, ?)",
-        ("place:B", "B", "now"),
+        "INSERT INTO place (id, name) VALUES (?, ?)",
+        ("place:B", "B"),
     )
     conn.commit()
 
@@ -44,12 +44,8 @@ def test_road_autogen_and_delete_notfound_additional():
     conn = init_db(":memory:")
     # create referenced places
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO place (id, name, created_at) VALUES (?, ?, ?)", ("p1", "P1", "now")
-    )
-    cur.execute(
-        "INSERT INTO place (id, name, created_at) VALUES (?, ?, ?)", ("p2", "P2", "now")
-    )
+    cur.execute("INSERT INTO place (id, name) VALUES (?, ?)", ("p1", "P1"))
+    cur.execute("INSERT INTO place (id, name) VALUES (?, ?)", ("p2", "P2"))
     conn.commit()
     Repo = road_repo.RoadRepository
     Road = road_repo.Road

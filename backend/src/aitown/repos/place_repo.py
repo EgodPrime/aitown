@@ -10,6 +10,7 @@ import uuid
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+import time
 
 from aitown.repos.base import ConflictError, NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import PlaceRepositoryInterface
@@ -29,7 +30,7 @@ class Place(BaseModel):
     # avoid mutable default list shared between instances
     tags: List[str] = Field(default_factory=list)
     shop_inventory: List[str] = Field(default_factory=list)
-    created_at: Optional[str] = None
+    # created_at intentionally omitted; DB may still store it but model does not expose it
 
 
 class PlaceRepository(PlaceRepositoryInterface):
@@ -42,18 +43,16 @@ class PlaceRepository(PlaceRepositoryInterface):
         """
         if not place.id:
             place.id = str(uuid.uuid4())
-        if not place.created_at:
-            place.created_at = datetime.datetime.now().isoformat()
         cur = self.conn.cursor()
         try:
+            # leave DB-created created_at to migrations/seed logic; do not supply created_at here
             cur.execute(
-                "INSERT INTO place (id, name, tags, shop_inventory, created_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO place (id, name, tags, shop_inventory) VALUES (?, ?, ?, ?)",
                 (
                     place.id,
                     place.name,
                     to_json_text(place.tags),
                     to_json_text(place.shop_inventory),
-                    place.created_at,
                 ),
             )
         except sqlite3.IntegrityError as e:
@@ -74,7 +73,6 @@ class PlaceRepository(PlaceRepositoryInterface):
             name=row["name"],
             tags=from_json_text(row["tags"]) or [],
             shop_inventory=from_json_text(row["shop_inventory"]) or [],
-            created_at=row["created_at"],
         )
 
     def list_all(self) -> List[Place]:
@@ -90,7 +88,6 @@ class PlaceRepository(PlaceRepositoryInterface):
                     name=r["name"],
                     tags=from_json_text(r["tags"]) or [],
                     shop_inventory=from_json_text(r["shop_inventory"]) or [],
-                    created_at=r["created_at"],
                 )
             )
         return places

@@ -1,5 +1,6 @@
 import datetime
 import sqlite3
+import time
 
 import pytest
 
@@ -74,21 +75,21 @@ def test_list_by_npc_order_and_limit():
     npc_repo.create(npc)
 
     # insert several entries with different created_at
-    now = datetime.datetime.now()
     for i in range(5):
         ent = MemoryEntry(
             npc_id="npc:A",
             content=f"msg {i}",
-            created_at=(now - datetime.timedelta(minutes=i)).isoformat(),
+            created_at=time.time(),
         )
         repo.create(ent)
+        time.sleep(0.01)  # ensure different timestamps
 
     # list should be ordered by created_at DESC
     results = repo.list_by_npc("npc:A", limit=3)
     assert len(results) == 3
-    # newest first -> msg 0,1,2
-    assert results[0].content == "msg 0"
-    assert results[1].content == "msg 1"
+    # newest first -> msg 4, msg 3, msg 2
+    assert results[0].content == "msg 4"
+    assert results[1].content == "msg 3"
     assert results[2].content == "msg 2"
     conn.close()
 
@@ -129,4 +130,24 @@ def test_create_conflict_raises():
 
     with pytest.raises(ConflictError):
         repo.create(entry)
+    conn.close()
+
+
+def test_count_by_npc_returns_expected():
+    conn = make_conn()
+    repo = MemoryEntryRepository(conn)
+    npc_repo = NpcRepository(conn)
+    player_repo = PlayerRepository(conn)
+
+    # create player and npc
+    player = Player(id="player:1", display_name="Test Player")
+    player_repo.create(player)
+    npc = NPC(id="npc:count", player_id="player:1", name="C")
+    npc_repo.create(npc)
+
+    # add two entries
+    repo.create(MemoryEntry(npc_id="npc:count", content="a"))
+    repo.create(MemoryEntry(npc_id="npc:count", content="b"))
+
+    assert repo.count_by_npc("npc:count") == 2
     conn.close()

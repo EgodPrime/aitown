@@ -8,6 +8,7 @@ import sqlite3
 from typing import List, Optional
 
 from pydantic import BaseModel
+import time
 
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import MemoryEntryRepositoryInterface
@@ -18,15 +19,14 @@ class MemoryEntry(BaseModel):
     id: Optional[int] = None
     npc_id: Optional[str] = None
     content: Optional[str] = None
-    created_at: Optional[str] = None
-
+    created_at: Optional[float] = None
 
 class MemoryEntryRepository(MemoryEntryRepositoryInterface):
     """Repository for storing and retrieving MemoryEntry objects."""
     def create(self, memory_entry: MemoryEntry) -> MemoryEntry:
         """Insert a MemoryEntry and return it with assigned id."""
         if not memory_entry.created_at:
-            memory_entry.created_at = datetime.datetime.now().isoformat()
+            memory_entry.created_at = time.time()
         cur = self.conn.cursor()
         try:
             cur.execute(
@@ -55,7 +55,7 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
             created_at=row["created_at"],
         )
 
-    def list_by_npc(self, npc_id: str, limit: int = 100) -> List[MemoryEntry]:
+    def list_by_npc(self, npc_id: str, limit: int = 168) -> List[MemoryEntry]:
         """List recent memory entries for a given NPC id."""
         cur = self.conn.cursor()
         cur.execute(
@@ -80,3 +80,10 @@ class MemoryEntryRepository(MemoryEntryRepositoryInterface):
         if cur.rowcount == 0:
             raise NotFoundError(f"MemoryEntry not found: {id}")
         self.conn.commit()
+
+    def count_by_npc(self, npc_id: str) -> int:
+        """Count memory entries for a given NPC id."""
+        cur = self.conn.cursor()
+        cur.execute("SELECT COUNT(*) as cnt FROM memory_entry WHERE npc_id = ?", (npc_id,))
+        row = cur.fetchone()
+        return row["cnt"] if row else 0
