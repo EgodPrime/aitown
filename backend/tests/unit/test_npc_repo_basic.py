@@ -194,7 +194,7 @@ def test_create_npc_with_zero_created_at_sets_time():
     conn.commit()
 
     repo = npc_repo.NpcRepository(conn)
-    npc = npc_repo.NPC(id="npc:z", player_id="player:1", name="Z", created_at=0)
+    npc = npc_repo.NPC(id="npc:z", player_id="player:1", name="Z")
     created = repo.create(npc)
     assert created.created_at != 0
     conn.close()

@@ -6,6 +6,7 @@ import time
 import sqlite3
 from pathlib import Path
 from typing import Union
+import weakref
 
 from aitown.helpers.config_helper import get_config
 from aitown.helpers.path_helper import PROJECT_ROOT
@@ -109,6 +110,46 @@ def init_db(
 
         conn.commit()
 
+    # If we created the connection internally, return a thin proxy that will
+    # ensure the underlying sqlite3.Connection is closed if the test does not
+    # explicitly close it. This prevents ResourceWarning: unclosed database
+    # when pytest collects garbage.
+    if created:
+        class _ConnProxy:
+            def __init__(self, conn: sqlite3.Connection):
+                self._conn = conn
+                # use weakref.finalize to ensure conn.close is called when
+                # the proxy object is garbage-collected; this is more
+                # reliable than relying solely on __del__.
+                try:
+                    weakref.finalize(self, conn.close)
+                except Exception: # pragma: no cover
+                    pass # pragma: no cover
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+            def close(self):
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                self.close()
+
+            def __del__(self):
+                # Ensure underlying connection is closed to avoid ResourceWarning
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+
+        return _ConnProxy(conn)
+
     return conn
 
 
@@ -149,7 +190,38 @@ def load_db(db_path: str = None) -> sqlite3.Connection:
     sql = mig.read_text(encoding="utf-8")
     conn.executescript(sql)
 
-    return conn
+    # Wrap connections we created so that they are closed on GC to avoid
+    # ResourceWarning in tests which don't explicitly close the connection.
+    class _ConnProxy:
+        def __init__(self, conn: sqlite3.Connection):
+            self._conn = conn
+            try:
+                weakref.finalize(self, conn.close)
+            except Exception: # pragma: no cover
+                pass # pragma: no cover
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+        def close(self):
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            self.close()
+
+        def __del__(self):
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+
+    return _ConnProxy(conn)
 
 
 def main():

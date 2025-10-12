@@ -305,7 +305,7 @@ def test_event_listener_falls_back_to_idle_on_failure(action_env):
         event_type="npc_action",
         payload={"action_type": "move", "npc_id": "npc:6", "place_id": "place:target"},
     )
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:6")
     assert updated.energy == 45
@@ -759,7 +759,7 @@ def test_event_listener_success_path_without_fallback(action_env, monkeypatch):
     event = Event(
         event_type="npc_action", payload={"action_type": "idle", "npc_id": "npc:event"}
     )
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     assert event.processed == 1
     assert event.processed_at is not None
@@ -821,7 +821,7 @@ def test_event_listener_handles_buy(action_env, monkeypatch):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:event-buyer")
     assert updated.inventory.get("item:event_buy") == 2
@@ -882,7 +882,7 @@ def test_event_listener_handles_sell(action_env, monkeypatch):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:event-seller")
     assert updated.inventory.get("item_platinum_coin", 0) == 0
@@ -922,7 +922,7 @@ def test_event_listener_handles_eat(action_env):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:event-eater")
     assert "item:event_food" not in updated.inventory
@@ -957,7 +957,7 @@ def test_event_listener_handles_sleep(action_env, monkeypatch):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:event-sleeper")
     assert updated.status == NPCStatus.SLEEPING
@@ -992,7 +992,7 @@ def test_event_listener_handles_work(action_env, monkeypatch):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     updated = npc_repo.get_by_id("npc:event-worker")
     assert updated.inventory.get("item_silver_coin") == 2
@@ -1021,7 +1021,7 @@ def test_event_listener_handles_unknown_action(action_env, monkeypatch):
         },
     )
 
-    ActionExecutor.event_listener(event)
+    ActionExecutor.event_listener(None, event)
 
     assert event.processed == 1
     assert calls == []

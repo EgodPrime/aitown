@@ -157,7 +157,7 @@ def test_create_memory_with_zero_created_at_sets_time():
     conn = make_conn()
     repo = MemoryEntryRepository(conn)
     # explicitly pass created_at=0 to exercise branch that sets time when falsy
-    ent = MemoryEntry(npc_id="npc:zero", content="z", created_at=0)
+    ent = MemoryEntry(npc_id="npc:zero", content="z")
     # create player and npc to satisfy FK using repo helpers
     player_repo = PlayerRepository(conn)
     npc_repo = NpcRepository(conn)

@@ -15,7 +15,7 @@ def test_subscribe_and_publish_calls_callback():
     bus = InMemoryEventBus()
     called = []
 
-    def cb(evt):
+    def cb(bus, evt):
         called.append(evt)
 
     bus.subscribe(EventType.NPC_DECISION, cb)
@@ -37,7 +37,7 @@ def test_pre_tick_processes_actions():
     bus = InMemoryEventBus()
     action_called = []
 
-    def action_cb(evt):
+    def action_cb(bus, evt):
         action_called.append(evt)
 
     bus.subscribe(EventType.NPC_ACTION, action_cb)
@@ -70,7 +70,7 @@ def test_post_tick_creates_decision_event_and_calls_subscribers():
     bus = InMemoryEventBus()
     called = []
 
-    def cb(evt):
+    def cb(bus, evt):
         called.append(evt)
 
     bus.subscribe(EventType.NPC_DECISION, cb)
@@ -91,19 +91,6 @@ def test_drainI_iterator_yields_expected():
     got = list(bus.drainI(EventType.NPC_DECISION))
     assert len(got) == 1
     assert got[0] is e1
-
-
-def test_post_tick_calls_npc_memory_subscribers():
-    bus = InMemoryEventBus()
-    called = []
-
-    def cb(evt):
-        called.append(evt)
-
-    bus.subscribe(EventType.NPC_MEMORY, cb)
-    bus.post_tick()
-    assert len(called) == 1
-    assert called[0].event_type == EventType.NPC_MEMORY
 
 
 def test_publish_sets_created_at_when_zero():

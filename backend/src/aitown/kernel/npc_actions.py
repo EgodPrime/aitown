@@ -7,6 +7,7 @@ import datetime
 import time
 
 from aitown.helpers.db_helper import load_db
+from aitown.kernel.event_bus import InMemoryEventBus
 from aitown.repos.effect_repo import EffectRepository
 from aitown.repos.event_repo import Event
 from aitown.repos.item_repo import ItemRepository, ItemType
@@ -368,7 +369,7 @@ class ActionExecutor:
         return True
 
     @staticmethod
-    def event_listener(event: Event):
+    def event_listener(event_bus: InMemoryEventBus, event: Event):
         """Dispatch an incoming event to the corresponding ActionExecutor method.
 
         The listener interprets the event payload and calls the matching action.

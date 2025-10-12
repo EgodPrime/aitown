@@ -28,6 +28,9 @@ class PlayerRepository(PlayerRepositoryInterface):
 
     def create(self, player: Player) -> Player:
         """Persist a Player record and return it."""
+        # ensure created_at is set when falsy (tests may pass 0)
+        if not player.created_at:
+            player.created_at = time.time()
         if not player.id:
             player.id = str(uuid.uuid4())
         cur = self.conn.cursor()

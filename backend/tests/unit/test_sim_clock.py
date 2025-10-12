@@ -16,13 +16,13 @@ def test_tick_phases_and_event_flow():
     processed = []
 
     # subscriber to action_processed to record processing
-    def on_action_processed(evt):
+    def on_action_processed(bus, evt):
         processed.append(("processed", evt))
 
     bus.subscribe(EventType.NPC_ACTION, on_action_processed)
 
     # subscriber to post_tick to publish an action for next pre_tick
-    def on_post(evt):
+    def on_post(bus, evt):
         # simulate an NPC decision producing an action event
         bus.publish(
             Event(
@@ -66,7 +66,7 @@ def test_subscriber_callback_called():
     bus = clock.event_bus
     called = []
 
-    def cb(payload):
+    def cb(bus, payload):
         called.append(payload)
 
     bus.subscribe(EventType.NPC_DECISION, cb)

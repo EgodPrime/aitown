@@ -9,6 +9,7 @@ import enum
 import sqlite3
 import uuid
 from typing import List, Optional
+from loguru import logger
 
 from aitown.repos.memory_repo import MemoryEntryRepository
 from aitown.repos.memory_repo import MemoryEntry
@@ -19,6 +20,11 @@ from aitown.repos.base import NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import NPCRepositoryInterface
 from aitown.helpers.config_helper import get_config
 from aitown.helpers.llm_helper import generate
+import json
+import re
+from aitown.repos.event_repo import Event
+from aitown.kernel.event_bus import InMemoryEventBus
+from aitown.kernel.event_bus import EventType
 
 cfg = get_config("npc")
 
@@ -63,7 +69,124 @@ class NPC(BaseModel):
         self.long_memory = (self.long_memory or "") + "\n" + content
         if self.long_memory and len(self.long_memory) > cfg.get("max_long_memory_chars", 8400):
             self.summary_memory()
-    
+
+    def register_decision_callback(self, event_bus: InMemoryEventBus, event: Event) -> None:
+        """
+        NPC基于自己的信息、记忆、环境等，做出决策，并通过event回调传递给事件总线
+        决策应该是json格式，体现为对`npc_actions`中方法的调用，结构为:
+        {
+            "action_type": "move" | "eat" | ....
+            other payload fields...
+        }
+        """
+        # Build a prompt describing the NPC state and ask the LLM to return a JSON
+        # object describing an action to take. The JSON MUST contain an
+        # "action_type" string and any other fields required by the action.
+        prompt = (
+            """
+# Data
+NPC id: %s
+name: %s
+player_id: %s
+location_id: %s
+status: %s
+long_memory: %s
+
+# Task
+Generate a single JSON object describing an action this NPC should take.
+The object must contain the key "action_type" whose value is one of the
+actions handled by the simulation (e.g. "move", "eat", "sleep", "work",
+"buy", "sell", "idle"). 
+
+# Possible actions:
+{
+    "action_type": "move",
+    "npc_id": "<npc_id>",
+    "place_id": "<place_id>"
+}
+{
+    "action_type": "eat",
+    "npc_id": "<npc_id>",
+    "item_id": "<item_id>",
+    "item_amount": <amount> # integer
+}
+{
+    "action_type": "sleep",
+    "npc_id": "<npc_id>",
+    "duration_hours": <hours> # integer
+}
+{
+    "action_type": "work",
+    "npc_id": "<npc_id>",
+    "duration_hours": <hours> # integer
+}
+{
+    "action_type": "buy",
+    "npc_id": "<npc_id>",
+    "item_id": "<item_id>",
+    "item_amount": <amount> # integer
+}
+{
+    "action_type": "sell",
+    "npc_id": "<npc_id>",
+    "item_id": "<item_id>",
+    "item_amount": <amount> # integer
+}
+{
+    "action_type": "idle",
+    "npc_id": "<npc_id>"
+}
+
+# Output
+Return only the JSON object (no surrounding text). 
+"""
+            % (
+                self.id,
+                self.name,
+                self.player_id,
+                self.location_id,
+                self.status,
+                (self.long_memory or ""),
+            )
+        )
+        all_ok = True
+        resp = generate(prompt)
+        if not resp:
+            logger.error("NPC.generate returned empty response")
+            all_ok = False
+            
+        if all_ok:
+            # Try to extract a JSON object from the response
+            try:
+                payload = json.loads(resp)
+            except Exception:
+                logger.warning("NPC.generate returned non-JSON response, trying to extract JSON")
+                # attempt to extract the first {...} block
+                m = re.search(r"\{[\s\S]*\}", resp)
+                if m:
+                    try:
+                        payload = json.loads(m.group(0))
+                    except Exception:
+                        logger.error("NPC.generate returned non-JSON response, unable to extract JSON")
+                        all_ok = False
+                else:
+                    logger.error("NPC.generate returned non-JSON response, unable to extract JSON")
+                    all_ok = False
+
+        if all_ok:
+            # ensure payload includes npc_id for downstream handlers
+            if isinstance(payload, dict):
+                payload.setdefault("npc_id", self.id)
+            evt = Event(event_type=EventType.NPC_ACTION, payload=payload, npc_id=self.id)
+        else:
+            evt = Event(
+                npc_id=self.id,
+                event_type=EventType.NPC_ACTION,
+                payload={"action_type": "idle", "npc_id": self.id},
+            )
+        event_bus.publish(evt)
+
+
     def summary_memory(self) -> bool:
         """Summarize old memories for this NPC."""
         prompt = f"""
@@ -111,6 +234,9 @@ class NpcRepository(NPCRepositoryInterface):
 
     def create(self, npc: NPC) -> NPC:
         """Persist a new NPC record and return the model."""
+        # ensure created_at is set when falsy (tests may pass 0)
+        if not npc.created_at:
+            npc.created_at = time.time()
         if not npc.id:
             npc.id = str(uuid.uuid4())
         # serialize inventory mapping to JSON

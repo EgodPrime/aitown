@@ -9,7 +9,6 @@ from aitown.repos.event_repo import Event, EventRepository
 class EventType(enum.StrEnum):
     NPC_DECISION = "NPC_DECISION" # 由EVENT_BUS创建，NPC消费 (1 producer : n consumers)
     NPC_ACTION = "NPC_ACTION" # 由NPC创建，EVENT_BUS传递，ActionExecutor消费 (n producers : 1 consumer)
-    NPC_MEMORY = "NPC_MEMORY" # 由EVENT_BUS创建，NPC消费 (1 producer : n consumers)
 
 
 class InMemoryEventBus:
@@ -22,7 +21,7 @@ class InMemoryEventBus:
     def __init__(self):
         self.events: List[Event] = []
         self.event_repo: EventRepository = EventRepository(None)
-        self.subscribers: Dict[str, List[Callable[[Event], None]]] = {}
+        self.subscribers: Dict[str, List[Callable[[InMemoryEventBus,Event], None]]] = {}
 
     def publish(self, event: Event) -> None:
         """
@@ -51,7 +50,7 @@ class InMemoryEventBus:
     def pre_tick(self) -> None:
         for evt in self.drainI(EventType.NPC_ACTION):
             for cb in self.subscribers.get(EventType.NPC_ACTION, []):
-                cb(evt)
+                cb(self, evt)
 
     def on_tick(self) -> None:
         """
@@ -65,16 +64,9 @@ class InMemoryEventBus:
         self.events = [evt for evt in self.events if evt.processed == 0]
 
     def post_tick(self) -> None:
-        # First, process NPC_MEMORY events so memories are recorded before NPC decisions
-        evt = Event(
-            event_type=EventType.NPC_MEMORY, created_at=time.time()
-        )
-        for cb in self.subscribers.get(EventType.NPC_MEMORY, []):
-            cb(evt)
-        # Then process NPC_DECISION events to potentially generate new actions
-        evt = Event(
-            event_type=EventType.NPC_DECISION, created_at=time.time()
-        )
+        # Process NPC_DECISION events to potentially generate new actions.
+        # The NPC_MEMORY event type was removed; keep post-tick concise.
+        evt = Event(event_type=EventType.NPC_DECISION, created_at=time.time())
         for cb in self.subscribers.get(EventType.NPC_DECISION, []):
-            cb(evt)
+            cb(self, evt)
 

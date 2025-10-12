@@ -25,9 +25,9 @@ so that NPCs and players can be simulated reliably, events persisted, and servic
 - [x] Implement Action Executors: move, eat, sleep, work, buy, sell, idle
   - [x] Unit tests for each executor verifying state changes
   - [x] Integration scenario test: simple NPC performs a sequence of actions producing expected outcomes
-- [ ] Implement Memory Manager with retention policy and summarization hook
-  - [ ] Mock LLM adapter in tests to verify summarize calls
-  - [ ] Integration test to verify summaries written to long memory table
+- [x] Implement Memory Manager with retention policy and summarization hook
+  - [x] Mock LLM adapter in tests to verify summarize calls
+  - [x] Integration test to verify summaries written to long memory table
 - [ ] Implement service layer APIs: `npc_service`, `player_service`
   - [ ] Document APIs and add lightweight integration tests using framework test client
 - [ ] Define and implement the simulation kernel (runtime core) API and runtime components (SimClock lives in the kernel, not as a user-facing service)
