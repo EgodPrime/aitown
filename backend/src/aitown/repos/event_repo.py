@@ -3,28 +3,18 @@
 Represents queued events and provides a simple repository for persistence.
 """
 
+import json
 from typing import List, Optional
 import time
 
 from aitown.models.event_model import Event
-from aitown.repos.base import from_json_text, to_json_text
-from aitown.repos.interfaces import EventRepositoryInterface
+from aitown.repos.interfaces import RepositoryInterface
 
 
-class EventRepository(EventRepositoryInterface):
+class EventRepository(RepositoryInterface[Event]):
     """SQLite-backed repository for Event objects."""
-    def append_event(self, event: Event) -> int:
-        """Append an event to the DB and return the new row id."""
-        cur = self.conn.cursor()
-        cur.execute(
-            "INSERT INTO event (event_type, payload, created_at, processed) VALUES (?, ?, ?, 0)",
-            (event.event_type, to_json_text(event.payload), event.created_at),
-        )
-        self.conn.commit()
 
-        return cur.lastrowid
-
-    def fetch_unprocessed(self, limit: int = 100) -> List[Event]:
+    def get_unprocessed(self, limit: int = 100) -> List[Event]:
         """Return up to `limit` unprocessed events ordered by id."""
         cur = self.conn.cursor()
         cur.execute(
@@ -37,7 +27,7 @@ class EventRepository(EventRepositoryInterface):
                 Event(
                     id=r["id"],
                     event_type=r["event_type"],
-                    payload=from_json_text(r["payload"]) or {},
+                    payload=json.dumps(r["payload"]),
                     created_at=r["created_at"],
                     processed=r["processed"],
                     processed_at=r["processed_at"],
@@ -46,7 +36,9 @@ class EventRepository(EventRepositoryInterface):
         return events
 
     def mark_processed(self, event_id: int, processed_at: str) -> None:
-        """Mark the event row as processed with a timestamp."""
+        """Mark the event row as processed with a timestamp.
+        Should be moved to the service layer
+        """
         cur = self.conn.cursor()
         cur.execute(
             "UPDATE event SET processed = 1, processed_at = ? WHERE id = ?",

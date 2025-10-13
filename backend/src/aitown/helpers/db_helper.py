@@ -174,8 +174,7 @@ def load_db(db_path: str = None) -> sqlite3.Connection:
         db_path = repos_config["db_path"]
 
     conn = sqlite3.connect(db_path)
-    # Ensure foreign keys behavior is consistent
-    conn.execute("PRAGMA foreign_keys = ON;")
+    
     try:
         conn.row_factory = sqlite3.Row
     except Exception:

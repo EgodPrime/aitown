@@ -1,7 +1,6 @@
 import pytest
 
 import aitown.repos.effect_repo as effect_repo_module
-from aitown.repos.base import ConflictError
 from aitown.repos.effect_repo import Effect, EffectRepository
 from aitown.repos.npc_repo import NPC, NpcRepository
 
