@@ -5,207 +5,27 @@ Defines the NPC Pydantic model and a SQLite-backed NpcRepository.
 
 from __future__ import annotations
 
-import enum
 import sqlite3
 import uuid
 from typing import List, Optional
 from loguru import logger
 
 from aitown.repos.memory_repo import MemoryEntryRepository
-from aitown.repos.memory_repo import MemoryEntry
-from pydantic import BaseModel, Field
 import time
 
+from aitown.models.npc_model import NPC, NPCStatus
 from aitown.repos.base import NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import NPCRepositoryInterface
 from aitown.helpers.config_helper import get_config
 from aitown.helpers.llm_helper import generate
 import json
 import re
-from aitown.repos.event_repo import Event
+from aitown.models.event_model import Event
+from aitown.models.memory_entry_model import MemoryEntry
 from aitown.kernel.event_bus import InMemoryEventBus
 from aitown.kernel.event_bus import EventType
 
 cfg = get_config("npc")
-
-
-class NPCStatus(enum.StrEnum):
-    PEACEFUL = "peaceful"
-    SLEEPING = "sleeping"
-    WORKING = "working"
-    UNWELL = "unwell"
-    AWFUL = "awful"
-
-
-class NPC(BaseModel):
-    """Persistent NPC state and metadata."""
-    id: Optional[str] = None
-    player_id: Optional[str] = None
-    name: Optional[str] = None
-    gender: Optional[str] = None
-    age: Optional[int] = None
-    prompt: Optional[str] = None
-    location_id: Optional[str] = None
-    status: str = "peaceful"
-    hunger: int = 100
-    energy: int = 100
-    mood: int = 100
-    # inventory is stored as JSON text in DB. Tests expect a mapping of item_id->num
-    inventory: dict[str, int] = Field(default_factory=dict)
-    long_memory: Optional[str] = None
-    is_dead: int = 0
-    created_at: float = Field(default_factory=time.time)
-    updated_at: Optional[float] = None
-
-    def remember(self, memory_repo: Optional[MemoryEntryRepository], content: str) -> bool:
-        """Convenience instance method to record a memory for this NPC."""
-        mr = memory_repo
-        if mr is None:
-            mr = MemoryEntryRepository()
-
-        mem = MemoryEntry(npc_id=self.id, content=content)
-        mr.create(mem)
-
-        self.long_memory = (self.long_memory or "") + "\n" + content
-        if self.long_memory and len(self.long_memory) > cfg.get("max_long_memory_chars", 8400):
-            self.summary_memory()
-
-    def register_decision_callback(self, event_bus: InMemoryEventBus, event: Event) -> None:
-        """
-        NPC基于自己的信息、记忆、环境等，做出决策，并通过event回调传递给事件总线
-        决策应该是json格式，体现为对`npc_actions`中方法的调用，结构为:
-        {
-            "action_type": "move" | "eat" | ....
-            other payload fields...
-        }
-        """
-        # Build a prompt describing the NPC state and ask the LLM to return a JSON
-        # object describing an action to take. The JSON MUST contain an
-        # "action_type" string and any other fields required by the action.
-        prompt = (
-            """
-# Data
-NPC id: %s
-name: %s
-player_id: %s
-location_id: %s
-status: %s
-long_memory: %s
-
-# Task
-Generate a single JSON object describing an action this NPC should take.
-The object must contain the key "action_type" whose value is one of the
-actions handled by the simulation (e.g. "move", "eat", "sleep", "work",
-"buy", "sell", "idle"). 
-
-# Possible actions:
-{
-    "action_type": "move",
-    "npc_id": "<npc_id>",
-    "place_id": "<place_id>"
-}
-{
-    "action_type": "eat",
-    "npc_id": "<npc_id>",
-    "item_id": "<item_id>",
-    "item_amount": <amount> # integer
-}
-{
-    "action_type": "sleep",
-    "npc_id": "<npc_id>",
-    "duration_hours": <hours> # integer
-}
-{
-    "action_type": "work",
-    "npc_id": "<npc_id>",
-    "duration_hours": <hours> # integer
-}
-{
-    "action_type": "buy",
-    "npc_id": "<npc_id>",
-    "item_id": "<item_id>",
-    "item_amount": <amount> # integer
-}
-{
-    "action_type": "sell",
-    "npc_id": "<npc_id>",
-    "item_id": "<item_id>",
-    "item_amount": <amount> # integer
-}
-{
-    "action_type": "idle",
-    "npc_id": "<npc_id>"
-}
-
-# Output
-Return only the JSON object (no surrounding text). 
-"""
-            % (
-                self.id,
-                self.name,
-                self.player_id,
-                self.location_id,
-                self.status,
-                (self.long_memory or ""),
-            )
-        )
-        all_ok = True
-        resp = generate(prompt)
-        if not resp:
-            logger.error("NPC.generate returned empty response")
-            all_ok = False
-            
-        if all_ok:
-            # Try to extract a JSON object from the response
-            try:
-                payload = json.loads(resp)
-            except Exception:
-                logger.warning("NPC.generate returned non-JSON response, trying to extract JSON")
-                # attempt to extract the first {...} block
-                m = re.search(r"\{[\s\S]*\}", resp)
-                if m:
-                    try:
-                        payload = json.loads(m.group(0))
-                    except Exception:
-                        logger.error("NPC.generate returned non-JSON response, unable to extract JSON")
-                        all_ok = False
-                else:
-                    logger.error("NPC.generate returned non-JSON response, unable to extract JSON")
-                    all_ok = False
-
-        if all_ok:
-            # ensure payload includes npc_id for downstream handlers
-            if isinstance(payload, dict):
-                payload.setdefault("npc_id", self.id)
-            evt = Event(event_type=EventType.NPC_ACTION, payload=payload, npc_id=self.id)
-        else:
-            evt = Event(
-                npc_id=self.id,
-                event_type=EventType.NPC_ACTION,
-                payload={"action_type": "idle", "npc_id": self.id},
-            )
-        event_bus.publish(evt)
-
-
-    def summary_memory(self) -> bool:
-        """Summarize old memories for this NPC."""
-        prompt = f"""
-# Data
-<long_memory>{self.long_memory}</long_memory>
-# Task
-`long_memory` is the long-term memory of an NPC character (named {self.name}) in a simulation game.
-Please generate a concise summary of the key events and facts from this memory.
-# Constraints
-- Summary should be no more than 100 words.
-- output the summary only wrapped in <summary>...</summary> tags.
-- The summary should start with "I am <name>, "
-# Output
-"""
-        summary = generate(prompt)
-        if summary:
-            self.long_memory = summary
-            return True
-        return False
 
 class NpcRepository(NPCRepositoryInterface):
     """SQLite-backed repository for NPC objects."""

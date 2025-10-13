@@ -11,7 +11,7 @@ def test_player_service_create_get_delete():
     conn = init_db(":memory:")
     ps = PlayerService(conn)
 
-    p = ps.create("Tester", password_hash=None, id="player:srv1")
+    p = ps.register("Tester", password_hash=None, id="player:srv1")
     assert p.id == "player:srv1"
 
     fetched = ps.get("player:srv1")
@@ -31,7 +31,7 @@ def test_npc_service_create():
     ns = NPCService(conn)
 
     # create player and npc
-    ps.create("Owner", id="player:owner")
+    ps.register("Owner", id="player:owner")
     npc = NPC(id="npc:srv1", player_id="player:owner", name="Servant")
     ns.create(npc)
 

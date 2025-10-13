@@ -9,19 +9,10 @@ import uuid
 import time
 from typing import List, Optional
 
-from pydantic import BaseModel
+from aitown.models.town_model import Town
 
 from aitown.repos.base import ConflictError, NotFoundError
 from aitown.repos.interfaces import RepositoryIterface
-
-
-class Town(BaseModel):
-    """Represents a town grouping (meta information)."""
-
-    id: Optional[str] = None
-    name: str
-    description: Optional[str] = None
-    sim_start_time: Optional[float] = None
 
 
 class TownRepository(RepositoryIterface):

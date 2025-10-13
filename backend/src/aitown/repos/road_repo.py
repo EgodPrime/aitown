@@ -6,18 +6,10 @@ Represents bidirectional connections between places and a repository to persist 
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel
+from aitown.models.road_model import Road
 
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import RoadRepositoryInterface
-
-
-class Road(BaseModel):
-    """A connection between two places used for NPC movement."""
-    id: Optional[str] = None
-    from_place: str
-    to_place: str
-    direction: str
 
 
 class RoadRepository(RoadRepositoryInterface):

@@ -7,19 +7,13 @@ import datetime
 import sqlite3
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 import time
 
+from aitown.models.memory_entry_model import MemoryEntry
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import MemoryEntryRepositoryInterface
 
-
-class MemoryEntry(BaseModel):
-    """A short persisted memory item tied to an NPC."""
-    id: Optional[int] = None
-    npc_id: Optional[str] = None
-    content: Optional[str] = None
-    created_at: float = Field(default_factory=time.time)
 
 class MemoryEntryRepository(MemoryEntryRepositoryInterface):
     """Repository for storing and retrieving MemoryEntry objects."""

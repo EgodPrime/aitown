@@ -28,8 +28,8 @@ so that NPCs and players can be simulated reliably, events persisted, and servic
 - [x] Implement Memory Manager with retention policy and summarization hook
   - [x] Mock LLM adapter in tests to verify summarize calls
   - [x] Integration test to verify summaries written to long memory table
-- [ ] Implement service layer APIs: `npc_service`, `player_service`
-  - [ ] Document APIs and add lightweight integration tests using framework test client
+- [x] Implement service layer APIs: `npc_service`, `player_service`
+  - [x] Document APIs and add lightweight integration tests using framework test client
 - [ ] Define and implement the simulation kernel (runtime core) API and runtime components (SimClock lives in the kernel, not as a user-facing service)
   - [ ] Unit and integration tests for kernel runtime behaviors and lifecycle
 

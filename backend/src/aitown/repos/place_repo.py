@@ -9,28 +9,12 @@ import sqlite3
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 import time
 
+from aitown.models.place_model import Place, PlaceTag
 from aitown.repos.base import ConflictError, NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import PlaceRepositoryInterface
-
-
-class PlaceTag(enum.StrEnum):
-    SHOP = "SHOP"
-    HOUSE = "HOUSE"
-    ENTERTAINMENT = "ENTERTAINMENT"
-    WORKABLE = "WORKABLE"
-
-
-class Place(BaseModel):
-    """Representation of a location in the world (shop/house/workplace)."""
-    id: Optional[str] = None
-    name: str
-    # avoid mutable default list shared between instances
-    tags: List[str] = Field(default_factory=list)
-    shop_inventory: List[str] = Field(default_factory=list)
-    # created_at intentionally omitted; DB may still store it but model does not expose it
 
 
 class PlaceRepository(PlaceRepositoryInterface):

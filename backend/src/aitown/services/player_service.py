@@ -13,7 +13,8 @@ class PlayerService:
     def __init__(self, conn=None):
         self.repo = PlayerRepository(conn)
 
-    def create(self, display_name: str, password_hash: Optional[str] = None, id: Optional[str] = None) -> Player:
+    def register(self, display_name: str, password_hash: Optional[str] = None, id: Optional[str] = None) -> Player:
+        
         p = Player(id=id, display_name=display_name, password_hash=password_hash)
         return self.repo.create(p)
 

@@ -8,19 +8,12 @@ import sqlite3
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 import time
 
+from aitown.models.player_model import Player
 from aitown.repos.base import NotFoundError
 from aitown.repos.interfaces import PlayerRepositoryInterface
-
-
-class Player(BaseModel):
-    """Represents a player account for NPC ownership and authentication."""
-    id: Optional[str] = None
-    display_name: str
-    password_hash: Optional[str] = None
-    created_at: float = Field(default_factory=time.time)
 
 
 class PlayerRepository(PlayerRepositoryInterface):

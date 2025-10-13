@@ -8,28 +8,11 @@ import sqlite3
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from aitown.models.item_model import Item, ItemType
 from aitown.repos.base import NotFoundError, from_json_text, to_json_text
 from aitown.repos.interfaces import ItemRepositoryInterface
-
-
-class ItemType(enum.StrEnum):
-    CONSUMABLE = "CONSUMABLE"
-    EQUIPMENT = "EQUIPMENT"
-    MONETARY = "MONETARY"
-    MISC = "MISC"
-
-
-class Item(BaseModel):
-    """Represents an in-game item and its metadata."""
-    id: Optional[str] = None
-    name: str
-    value: int = 0
-    # keep a non-null default to match DB NOT NULL constraint
-    type: str = ItemType.MISC
-    effect_ids: list[str] = Field(default_factory=list)
-    description: Optional[str] = None
 
 
 class ItemRepository(ItemRepositoryInterface):
