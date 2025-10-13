@@ -6,7 +6,7 @@ Abstract base classes describing repository contracts used across the codebase.
 from __future__ import annotations
 
 import sqlite3
-from typing import List, Optional, TypeVar, Generic
+from typing import List, Optional, TypeVar, Generic, get_args
 import json
 
 from loguru import logger
@@ -22,6 +22,17 @@ class RepositoryInterface(Generic[T]):
             conn = load_db()
         self.conn = conn
         self.table_name = 'object'  # Placeholder, should be overridden in subclasses
+        # Try to infer the model class from the Generic[T] parameter on the subclass
+        self.model_cls: Optional[type[T]] = None
+        try:
+            # Look for typing args on the subclass' __orig_bases__
+            for base in getattr(self.__class__, "__orig_bases__", ()):
+                args = get_args(base)
+                if args:
+                    self.model_cls = args[0]
+                    break
+        except Exception:
+            self.model_cls = None
         
 
     def create(self, obj: T) -> Optional[T]:
@@ -30,9 +41,13 @@ class RepositoryInterface(Generic[T]):
         data = obj.model_dump()
         placeholders = ', '.join('?' * len(data))
         columns = ', '.join(data.keys())
-        values = tuple(data.values())
+        # use a mutable list so we can json-serialize nested structures
+        values = list(data.values())
+        for i, v in enumerate(values):
+            if isinstance(v, (dict, list)):
+                values[i] = json.dumps(v)
         try:
-            cur.execute(f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})", values)
+            cur.execute(f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})", tuple(values))
             self.conn.commit()
             obj.id = cur.lastrowid
             return obj
@@ -60,27 +75,35 @@ class RepositoryInterface(Generic[T]):
         row = cur.fetchone()
         if not row:
             return None
-        return T.model_validate(dict(row))
+        row_dict = dict(row)
+        validated = self.model_cls.model_validate(row_dict)
+        return validated
 
     def list(self, limit: int=100, offset: int=0) -> List[T]:
         """List objects with pagination."""
         cur = self.conn.cursor()
         cur.execute(f"SELECT * FROM {self.table_name} LIMIT ? OFFSET ?", (limit, offset))
         rows = cur.fetchall()
-        return [T.model_validate(dict(r)) for r in rows]
+        results = []
+        for r in rows:
+            row_dict = dict(r)
+            results.append(self.model_cls.model_validate(row_dict))
+        return results
 
-    def update(self, id: int, obj: T) -> Optional[T]:
+    def update(self, id: int, obj: T) -> bool:
         cur = self.conn.cursor()
         data = obj.model_dump()
         columns = ', '.join(f"{k}=?" for k in data.keys() if k != 'id')
-        values = tuple(v for k, v in data.items() if k != 'id') + (id,)
+        # preserve order and allow JSON serialization
+        values = [ v for k, v in data.items() if k != 'id' ]
+        for i, v in enumerate(values):
+            if isinstance(v, (dict, list)):
+                values[i] = json.dumps(v)
         try:
-            cur.execute(f"UPDATE {self.table_name} SET {columns} WHERE id = ?", values)
-            if cur.rowcount == 0:
-                return None
+            cur.execute(f"UPDATE {self.table_name} SET {columns} WHERE id = ?", tuple(values) + (id,))
             self.conn.commit()
-            return obj
+            return cur.rowcount > 0
         except sqlite3.Error as e:
             self.conn.rollback()
             logger.error(f"Error updating object: {e}")
-            return None
+            return False

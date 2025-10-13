@@ -12,7 +12,7 @@ class ItemType(enum.StrEnum):
 
 
 class Item(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     name: str
     value: int = 0
     type: str = ItemType.MISC

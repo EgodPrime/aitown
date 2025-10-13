@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class Town(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     name: str
     description: Optional[str] = None
     sim_start_time: Optional[float] = None

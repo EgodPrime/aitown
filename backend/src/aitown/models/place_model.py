@@ -12,7 +12,7 @@ class PlaceTag(enum.StrEnum):
 
 
 class Place(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     name: str
     tags: List[str] = Field(default_factory=list)
     shop_inventory: List[str] = Field(default_factory=list)

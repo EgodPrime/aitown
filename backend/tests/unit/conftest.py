@@ -16,7 +16,7 @@ def db_conn():
 
 
 @pytest.fixture
-def npc_repo(db_conn):
+def npc_repo(db_conn) -> NpcRepository:
     return NpcRepository(db_conn)
 
 
@@ -26,7 +26,7 @@ def item_repo(db_conn):
 
 
 @pytest.fixture
-def effect_repo(db_conn):
+def effect_repo(db_conn) -> EffectRepository:
     return EffectRepository(db_conn)
 
 

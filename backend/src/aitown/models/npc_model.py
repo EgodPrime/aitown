@@ -14,7 +14,7 @@ class NPCStatus(enum.StrEnum):
 
 
 class NPC(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     player_id: Optional[str] = None
     name: Optional[str] = None
     gender: Optional[str] = None

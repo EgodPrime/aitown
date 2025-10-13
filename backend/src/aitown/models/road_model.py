@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class Road(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     from_place: str
     to_place: str
     direction: str

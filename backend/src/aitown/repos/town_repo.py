@@ -10,52 +10,17 @@ import time
 from typing import List, Optional
 
 from aitown.models.town_model import Town
-
-from aitown.repos.base import ConflictError, NotFoundError
-from aitown.repos.interfaces import RepositoryIterface
+from aitown.repos.interfaces import RepositoryInterface
 
 
-class TownRepository(RepositoryIterface):
+class TownRepository(RepositoryInterface[Town]):
     """SQLite-backed repository for Town objects."""
-
-    def create(self, town: Town) -> Town:
-        cur = self.conn.cursor()
-        try:
-            cur.execute(
-                "INSERT INTO town (id, name, description) VALUES (?, ?, ?)",
-                (town.id, town.name, town.description),
-            )
-        except sqlite3.IntegrityError as e:
-            raise ConflictError(str(e))
-        else:
-            self.conn.commit()
-            return town
-
-    def get_by_id(self, id: str) -> Town:
-        cur = self.conn.cursor()
-        cur.execute("SELECT * FROM town WHERE id = ?", (id,))
-        row = cur.fetchone()
-        if not row:
-            raise NotFoundError(f"Town not found: {id}")
-        return Town(id=row["id"], name=row["name"], description=row["description"], created_at=row["created_at"])
-
-    def list_all(self) -> List[Town]:
-        cur = self.conn.cursor()
-        cur.execute("SELECT * FROM town")
-        rows = cur.fetchall()
-        towns: List[Town] = []
-        for r in rows:
-            towns.append(Town(id=r["id"], name=r["name"], description=r["description"], created_at=r["created_at"]))
-        return towns
-
-    def delete(self, id: str) -> None:
-        cur = self.conn.cursor()
-        cur.execute("DELETE FROM town WHERE id = ?", (id,))
-        if cur.rowcount == 0:
-            raise NotFoundError(f"Town not found: {id}")
-        self.conn.commit()
+    def __init__(self, conn = None):
+        super().__init__(conn)
+        self.table_name = "town"
 
     def set_sim_start_time(self, town_id: str, sim_start_time: float) -> None:
+        """ This function should be moved to the service layer """
         cur = self.conn.cursor()
         cur.execute(
             "UPDATE town SET sim_start_time = ? WHERE id = ?",
@@ -64,9 +29,10 @@ class TownRepository(RepositoryIterface):
         self.conn.commit()
 
     def get_sim_start_time(self, town_id: str) -> Optional[float]:
+        """ This function should be moved to the service layer """
         cur = self.conn.cursor()
         cur.execute("SELECT sim_start_time FROM town WHERE id = ?", (town_id,))
         row = cur.fetchone()
         if not row:
-            raise NotFoundError(f"Town not found: {town_id}")
+            return None
         return row["sim_start_time"]

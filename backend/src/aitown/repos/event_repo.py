@@ -13,6 +13,9 @@ from aitown.repos.interfaces import RepositoryInterface
 
 class EventRepository(RepositoryInterface[Event]):
     """SQLite-backed repository for Event objects."""
+    def __init__(self, conn = None):
+        super().__init__(conn)
+        self.table_name = "event"
 
     def get_unprocessed(self, limit: int = 100) -> List[Event]:
         """Return up to `limit` unprocessed events ordered by id."""

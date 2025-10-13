@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import time
 import sqlite3
 from pathlib import Path
@@ -10,7 +11,6 @@ import weakref
 
 from aitown.helpers.config_helper import get_config
 from aitown.helpers.path_helper import PROJECT_ROOT
-from aitown.repos.base import to_json_text
 
 
 def _migration_path() -> Path:
@@ -84,8 +84,8 @@ def init_db(
                 (
                     p.get("id"),
                     p.get("name"),
-                    to_json_text(p.get("tags", [])),
-                    to_json_text(p.get("shop_inventory", [])),
+                    json.dumps(p.get("tags", [])),
+                    json.dumps(p.get("shop_inventory", [])),
                 ),
             )
 
@@ -103,7 +103,7 @@ def init_db(
                     i.get("name"),
                     i.get("value", 0),
                     i.get("type", "MISC"),
-                    to_json_text(i.get("effect_ids", [])),
+                    json.dumps(i.get("effect_ids", [])),
                     i.get("description"),
                 ),
             )

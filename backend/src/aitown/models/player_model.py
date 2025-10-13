@@ -5,7 +5,7 @@ import time
 
 
 class Player(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     display_name: str
     password_hash: Optional[str] = None
     created_at: float = Field(default_factory=time.time)

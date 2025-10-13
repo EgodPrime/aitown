@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class Effect(BaseModel):
-    id: Optional[str] = None
+    id: Optional[int] = None
     name: str
     attribute: str
     change: int
@@ -14,7 +14,7 @@ class Effect(BaseModel):
         from aitown.repos.npc_repo import NpcRepository
 
         npc_repo = NpcRepository()
-        npc = npc_repo.get_by_id(npc_id)
+        npc = npc_repo.get(npc_id)
         match self.attribute:
             case "hunger":
                 npc.hunger = max(0, min(100, npc.hunger + self.change * factor))
